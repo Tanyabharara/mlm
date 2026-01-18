@@ -1,55 +1,71 @@
-// @ts-nocheck
-import { prisma } from "@/lib/db";
+import { getUserByFirebaseUid, getReferrals } from "@/lib/firebase-db";
 import { NextResponse } from "next/server";
+
+function buildNetworkNodes(
+  userId: string,
+  userName: string,
+  referrals: any[],
+  depth: number = 0,
+  xOffset: number = 0,
+  parentId?: string
+): { nodes: any[]; edges: any[]; nextX: number } {
+  const nodes: any[] = [];
+  const edges: any[] = [];
+  let currentX = xOffset;
+
+  if (depth === 0) {
+    nodes.push({
+      id: userId,
+      data: { label: userName || "You" },
+      position: { x: 250, y: 0 },
+      type: "input",
+    });
+  } else {
+    nodes.push({
+      id: userId,
+      data: { label: userName || "User" },
+      position: { x: currentX, y: depth * 100 },
+    });
+    if (parentId) {
+      edges.push({
+        id: `e${parentId}-${userId}`,
+        source: parentId,
+        target: userId,
+      });
+    }
+  }
+
+  let nextX = currentX;
+  for (let i = 0; i < referrals.length; i++) {
+    const referral = referrals[i];
+    const nested = buildNetworkNodes(
+      referral.id,
+      referral.name || "User",
+      referral.referrals || [],
+      depth + 1,
+      nextX,
+      userId
+    );
+    nodes.push(...nested.nodes);
+    edges.push(...nested.edges);
+    nextX = nested.nextX + 200;
+  }
+
+  return { nodes, edges, nextX: Math.max(nextX, currentX + 200) };
+}
 
 export async function POST(req: Request) {
   try {
     const { uid } = await req.json();
-    const user = await prisma.user.findUnique({
-        where: { firebaseUid: uid },
-        include: {
-            referrals: {
-                include: {
-                    referrals: {
-                        include: {
-                            referrals: true
-                        }
-                    }
-                }
-            }
-        }
-    });
+    const user = await getUserByFirebaseUid(uid);
 
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const nodes = [];
-    const edges = [];
-    
-    // Root Node
-    nodes.push({ id: user.id.toString(), data: { label: user.name || "You" }, position: { x: 250, y: 0 }, type: 'input' });
-
-    // Recursively add nodes (manually unrolled for now)
-    user.referrals.forEach((r1, i) => {
-        nodes.push({ id: r1.id.toString(), data: { label: r1.name || "User" }, position: { x: i * 200, y: 100 } });
-        edges.push({ id: `e${user.id}-${r1.id}`, source: user.id.toString(), target: r1.id.toString() });
-        
-        if (r1.referrals) {
-            r1.referrals.forEach((r2, j) => {
-                nodes.push({ id: r2.id.toString(), data: { label: r2.name || "User" }, position: { x: i * 200 + j * 150, y: 200 } });
-                edges.push({ id: `e${r1.id}-${r2.id}`, source: r1.id.toString(), target: r2.id.toString() });
-
-                if (r2.referrals) {
-                    r2.referrals.forEach((r3, k) => {
-                        nodes.push({ id: r3.id.toString(), data: { label: r3.name || "User" }, position: { x: i * 200 + j * 150 + k * 100, y: 300 } });
-                        edges.push({ id: `e${r2.id}-${r3.id}`, source: r2.id.toString(), target: r3.id.toString() });
-                    });
-                }
-            });
-        }
-    });
+    const referrals = await getReferrals(user.id, 3);
+    const { nodes, edges } = buildNetworkNodes(user.id, user.name || "You", referrals);
 
     return NextResponse.json({ nodes, edges });
   } catch (error) {
-     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
 }

@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { getUserByFirebaseUid, getUserByReferralCode, createUser } from "@/lib/firebase-db";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -10,36 +10,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Check if user exists
-    let user = await prisma.user.findUnique({
-      where: { firebaseUid: uid },
-    });
+    let user = await getUserByFirebaseUid(uid);
 
     if (!user) {
-      // Create new user
-      // Handle referral logic
       let referrerId = null;
       if (referralCode) {
-        const referrer = await prisma.user.findUnique({
-            where: { referralCode },
-        });
+        const referrer = await getUserByReferralCode(referralCode);
         if (referrer) {
-            referrerId = referrer.id;
+          referrerId = referrer.id;
         }
       }
 
-      // Generate own referral code (simple random for now)
       const newReferralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-      user = await prisma.user.create({
-        data: {
-          firebaseUid: uid,
-          email,
-          name,
-          photoURL,
-          referralCode: newReferralCode,
-          referredById: referrerId,
-        },
+      user = await createUser({
+        firebaseUid: uid,
+        email,
+        name,
+        photoURL,
+        referralCode: newReferralCode,
+        referredById: referrerId,
+        role: "USER",
       });
     }
 

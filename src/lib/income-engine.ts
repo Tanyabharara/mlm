@@ -1,61 +1,41 @@
-// @ts-nocheck
-import { prisma } from "@/lib/db";
+import { getPurchase, getPlan, getUserById, updateWalletBalance, createTransaction } from "@/lib/firebase-db";
 
-export async function distributeIncome(purchaseId: number) {
-  const purchase = await prisma.purchase.findUnique({
-    where: { id: purchaseId },
-    include: {
-      user: {
-        include: {
-          plan: true,
-        },
-      },
-      plan: true,
-    },
-  });
+export async function distributeIncome(purchaseId: string) {
+  const purchase = await getPurchase(purchaseId);
+  if (!purchase || !purchase.userId) return;
 
-  if (!purchase || !purchase.user.referredById) return;
+  const user = await getUserById(purchase.userId);
+  if (!user || !user.referredById) return;
 
-  const plan = purchase.plan;
-  const levelPercentages = JSON.parse(plan.levelPercentages); 
+  const plan = await getPlan(purchase.planId);
+  if (!plan) return;
+
+  const levelPercentages = JSON.parse(plan.levelPercentages);
   const purchaseAmount = Number(plan.price);
 
-  let currentUserId: number | null = purchase.user.referredById;
+  let currentUserId: string | null = user.referredById;
   let level = 1;
 
   while (currentUserId && level <= plan.levelCount) {
-    const uplineUser = await prisma.user.findUnique({
-      where: { id: currentUserId },
-      include: { plan: true }, 
-    });
-
+    const uplineUser = await getUserById(currentUserId);
     if (!uplineUser) break;
 
     if (uplineUser.planId) {
-       const percentage = levelPercentages[level.toString()] || 0;
-       if (percentage > 0) {
-           const commission = purchaseAmount * percentage;
-           
-           await prisma.$transaction([
-               prisma.user.update({
-                   where: { id: uplineUser.id },
-                   data: {
-                       walletBalance: { increment: commission }
-                   }
-               }),
-               prisma.transaction.create({
-                   data: {
-                       userId: uplineUser.id,
-                       amount: commission,
-                       type: "CREDIT",
-                       description: `Level ${level} commission from ${purchase.user.name || 'user'}`
-                   }
-               })
-           ]);
-       }
+      const percentage = levelPercentages[level.toString()] || 0;
+      if (percentage > 0) {
+        const commission = purchaseAmount * percentage;
+
+        await updateWalletBalance(uplineUser.id, commission, "increment");
+        await createTransaction({
+          userId: uplineUser.id,
+          amount: commission,
+          type: "CREDIT",
+          description: `Level ${level} commission from ${user.name || "user"}`,
+        });
+      }
     }
 
-    currentUserId = uplineUser.referredById;
+    currentUserId = uplineUser.referredById || null;
     level++;
   }
 }
