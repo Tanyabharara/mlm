@@ -1,0 +1,68 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               Int      @id @default(autoincrement())
+  firebaseUid      String   @unique
+  email            String   @unique
+  name             String?
+  photoURL         String?
+  role             String   @default("USER")
+  referralCode     String   @unique
+  referredById     Int?
+  referredBy       User?    @relation("ReferralTree", fields: [referredById], references: [id])
+  referrals        User[]   @relation("ReferralTree")
+  planId           Int?
+  plan             Plan?    @relation(fields: [planId], references: [id])
+  walletBalance    Decimal  @default(0.0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  purchases        Purchase[]
+  transactions     Transaction[]
+  withdrawalRequests WithdrawalRequest[]
+}
+
+model Plan {
+  id               Int      @id @default(autoincrement())
+  name             String
+  price            Decimal
+  levelCount       Int
+  levelPercentages String   // JSON string
+  users            User[]
+  purchases        Purchase[]
+}
+
+model Purchase {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  plan      Plan     @relation(fields: [planId], references: [id])
+  planId    Int
+  createdAt DateTime @default(now())
+}
+
+model Transaction {
+  id          Int             @id @default(autoincrement())
+  user        User            @relation(fields: [userId], references: [id])
+  userId      Int
+  amount      Decimal
+  type        String          // CREDIT or DEBIT
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model WithdrawalRequest {
+  id          Int      @id @default(autoincrement())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int
+  amount      Decimal
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  processedAt DateTime?
+}
