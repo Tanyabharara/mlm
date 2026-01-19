@@ -4,10 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import ReactFlow, { Background, Controls, Node, Edge } from "reactflow";
 import "reactflow/dist/style.css";
 
-async function fetchNetwork(uid: string, email?: string | null, name?: string | null, photoURL?: string | null) {
+async function fetchNetwork(uid: string, idToken: string) {
     const res = await fetch("/api/network", {
         method: "POST",
-        body: JSON.stringify({ uid, email, name, photoURL }),
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ uid }),
     });
     if (!res.ok) throw new Error("Failed to fetch network");
     return res.json();
@@ -17,7 +21,10 @@ export default function NetworkPage() {
     const { user } = useAuth();
     const { data, isLoading } = useQuery({
         queryKey: ["network", user?.uid],
-        queryFn: () => fetchNetwork(user!.uid, user?.email || undefined, user?.displayName || undefined, user?.photoURL || undefined),
+        queryFn: async () => {
+            const token = await user!.getIdToken();
+            return fetchNetwork(user!.uid, token);
+        },
         enabled: !!user?.uid,
     });
     

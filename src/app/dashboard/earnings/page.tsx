@@ -13,7 +13,7 @@ export default function EarningsPage() {
             const response = await fetch("/api/user/earnings", {
                 headers: {
                     "x-user-email": user?.email || "",
-                    "x-user-uid": user?.uid || "",
+                    Authorization: `Bearer ${await user!.getIdToken()}`,
                 },
             });
             if (!response.ok) throw new Error("Failed to fetch earnings");

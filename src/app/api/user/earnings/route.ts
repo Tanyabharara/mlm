@@ -1,30 +1,45 @@
 import { getUserByEmail, getTransactions, getUserByFirebaseUid } from "@/lib/firebase-db";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
+import { adminAuth } from "@/lib/firebase-db";
 
 export async function GET() {
   try {
     const headersList = await headers();
+    const authHeader = headersList.get("authorization") || "";
     const userEmail = headersList.get("x-user-email");
-    const userUid = headersList.get("x-user-uid");
+    const userUidHeader = headersList.get("x-user-uid");
 
-    if (!userEmail && !userUid) {
+    if (!authHeader) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const token = authHeader.startsWith("Bearer ") ? authHeader.substring("Bearer ".length).trim() : "";
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    let verifiedUid: string;
+    try {
+      const decoded = await adminAuth.verifyIdToken(token);
+      verifiedUid = decoded.uid;
+    } catch (error) {
+      console.error("Failed to verify Firebase ID token:", error);
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     let user;
-    if (userUid) {
-      user = await getUserByFirebaseUid(userUid);
-      if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-      }
-    } else if (userEmail) {
-      user = await getUserByEmail(userEmail);
-      if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-      }
-    } else {
+    if (userUidHeader && userUidHeader !== verifiedUid) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    user = await getUserByFirebaseUid(verifiedUid);
+    if (!user && userEmail) {
+      user = await getUserByEmail(userEmail);
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     const transactions = await getTransactions(user.id, 10);

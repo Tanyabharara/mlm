@@ -1,15 +1,18 @@
 import { getUserByFirebaseUid, getPlan, getReferrals } from "@/lib/firebase-db";
+import { verifyAuthToken } from "@/lib/auth-server";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
     const { uid } = await req.json();
 
-    if (!uid) {
+    const verifiedUid = await verifyAuthToken(req);
+
+    if (!verifiedUid || verifiedUid !== uid) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await getUserByFirebaseUid(uid);
+    const user = await getUserByFirebaseUid(verifiedUid);
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });

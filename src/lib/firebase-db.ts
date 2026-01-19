@@ -90,6 +90,8 @@ function invalidateCache(pattern: string): void {
 }
 
 export const firestore = db;
+export const adminApp = app;
+export const adminAuth = getAuth(app);
 
 export async function getUserByFirebaseUid(uid: string) {
   const cacheKey = getCacheKey("users", uid);
@@ -211,6 +213,11 @@ export async function createUser(data: any) {
       updatedAt: now,
     });
     invalidateCache("users:");
+    
+    if (data.referredById) {
+      invalidateCache(`referrals:${data.referredById}:`);
+    }
+    
     return { id: docRef.id, ...data, walletBalance: 0, createdAt: now, updatedAt: now };
   } catch (error: any) {
     if (error?.code === 5 || error?.code === "NOT_FOUND") {
@@ -330,6 +337,15 @@ export async function updateUser(id: string, data: any) {
     updatedAt: new Date(),
   });
   invalidateCache("users:");
+  
+  if (data.referredById) {
+    invalidateCache(`referrals:${data.referredById}:`);
+  }
+  
+  if (userData.referredById && data.referredById !== userData.referredById) {
+    invalidateCache(`referrals:${userData.referredById}:`);
+  }
+  
   return getUserById(id);
 }
 
@@ -405,13 +421,21 @@ export async function createTransaction(data: any) {
 }
 
 export async function getTransactions(userId: string, limit: number = 10) {
-  const snapshot = await db
-    .collection("transactions")
-    .where("userId", "==", userId)
-    .orderBy("createdAt", "desc")
-    .limit(limit)
-    .get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  try {
+    const snapshot = await db
+      .collection("transactions")
+      .where("userId", "==", userId)
+      .orderBy("createdAt", "desc")
+      .limit(limit)
+      .get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error(
+      "Error fetching transactions. Ensure composite index on (userId ASC, createdAt DESC) exists in Firestore.",
+      error
+    );
+    return [];
+  }
 }
 
 export async function getReferrals(userId: string, depth: number = 3) {
@@ -419,23 +443,28 @@ export async function getReferrals(userId: string, depth: number = 3) {
   const cached = getCached(cacheKey);
   if (cached) return cached;
 
-  async function getReferralsRecursive(id: string, currentDepth: number): Promise<any[]> {
-    if (currentDepth <= 0) return [];
+  try {
+    async function getReferralsRecursive(id: string, currentDepth: number): Promise<any[]> {
+      if (currentDepth <= 0) return [];
 
-    const snapshot = await db.collection("users").where("referredById", "==", id).get();
-    const referrals = await Promise.all(
-      snapshot.docs.map(async (doc) => {
-        const user = { id: doc.id, ...doc.data() };
-        const nested = await getReferralsRecursive(doc.id, currentDepth - 1);
-        return { ...user, referrals: nested };
-      })
-    );
+      const snapshot = await db.collection("users").where("referredById", "==", id).get();
+      const referrals = await Promise.all(
+        snapshot.docs.map(async (doc) => {
+          const user = { id: doc.id, ...doc.data() };
+          const nested = await getReferralsRecursive(doc.id, currentDepth - 1);
+          return { ...user, referrals: nested };
+        })
+      );
+      return referrals;
+    }
+
+    const referrals = await getReferralsRecursive(userId, depth);
+    setCache(cacheKey, referrals);
     return referrals;
+  } catch (error) {
+    console.error("Error fetching referrals:", error);
+    return [];
   }
-
-  const referrals = await getReferralsRecursive(userId, depth);
-  setCache(cacheKey, referrals);
-  return referrals;
 }
 
 export async function getUplineChain(userId: string): Promise<string[]> {

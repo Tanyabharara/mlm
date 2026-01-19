@@ -1,4 +1,5 @@
 import { ensureUserExists, getUserByReferralCode, updateUser } from "@/lib/firebase-db";
+import { verifyAuthToken } from "@/lib/auth-server";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -6,11 +7,17 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { uid, email, name, photoURL, referralCode } = body;
 
-    if (!uid || !email) {
+    const verifiedUid = await verifyAuthToken(req);
+    if (!verifiedUid) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!email) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    let user = await ensureUserExists(uid, { email, name, photoURL });
+    // Always trust the UID from the verified token, not from the body
+    let user = await ensureUserExists(verifiedUid, { email, name, photoURL });
 
     if (referralCode && !user.referredById) {
       const referrer = await getUserByReferralCode(referralCode);
