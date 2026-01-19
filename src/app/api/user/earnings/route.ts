@@ -1,4 +1,4 @@
-import { getUserByEmail, getTransactions } from "@/lib/firebase-db";
+import { getUserByEmail, getTransactions, ensureUserExists } from "@/lib/firebase-db";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 
@@ -6,15 +6,22 @@ export async function GET() {
   try {
     const headersList = await headers();
     const userEmail = headersList.get("x-user-email");
+    const userUid = headersList.get("x-user-uid");
 
-    if (!userEmail) {
+    if (!userEmail && !userUid) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await getUserByEmail(userEmail);
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    let user;
+    if (userUid) {
+      user = await ensureUserExists(userUid, { email: userEmail || undefined });
+    } else if (userEmail) {
+      user = await getUserByEmail(userEmail);
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+    } else {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const transactions = await getTransactions(user.id, 10);

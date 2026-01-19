@@ -2,10 +2,10 @@
 import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 
-async function fetchUser(uid: string) {
+async function fetchUser(uid: string, email?: string | null, name?: string | null, photoURL?: string | null) {
     const res = await fetch("/api/user/me", {
         method: "POST",
-        body: JSON.stringify({ uid }),
+        body: JSON.stringify({ uid, email, name, photoURL }),
     });
     if (!res.ok) throw new Error("Failed to fetch user");
     return res.json();
@@ -15,7 +15,7 @@ export default function DashboardPage() {
     const { user: authUser } = useAuth();
     const { data, isLoading, error } = useQuery({
         queryKey: ["user", authUser?.uid],
-        queryFn: () => fetchUser(authUser!.uid),
+        queryFn: () => fetchUser(authUser!.uid, authUser?.email || undefined, authUser?.displayName || undefined, authUser?.photoURL || undefined),
         enabled: !!authUser?.uid,
     });
 

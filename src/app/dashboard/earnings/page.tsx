@@ -13,12 +13,13 @@ export default function EarningsPage() {
             const response = await fetch("/api/user/earnings", {
                 headers: {
                     "x-user-email": user?.email || "",
+                    "x-user-uid": user?.uid || "",
                 },
             });
             if (!response.ok) throw new Error("Failed to fetch earnings");
             return response.json();
         },
-        enabled: !!user?.email,
+        enabled: !!user?.uid,
     });
 
     if (isLoading) {

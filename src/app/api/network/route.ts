@@ -1,4 +1,4 @@
-import { getUserByFirebaseUid, getReferrals } from "@/lib/firebase-db";
+import { ensureUserExists, getReferrals } from "@/lib/firebase-db";
 import { NextResponse } from "next/server";
 
 function buildNetworkNodes(
@@ -56,10 +56,8 @@ function buildNetworkNodes(
 
 export async function POST(req: Request) {
   try {
-    const { uid } = await req.json();
-    const user = await getUserByFirebaseUid(uid);
-
-    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    const { uid, email, name, photoURL } = await req.json();
+    const user = await ensureUserExists(uid, { email, name, photoURL });
 
     const referrals = await getReferrals(user.id, 3);
     const { nodes, edges } = buildNetworkNodes(user.id, user.name || "You", referrals);

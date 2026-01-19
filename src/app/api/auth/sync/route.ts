@@ -1,4 +1,4 @@
-import { getUserByFirebaseUid, getUserByReferralCode, createUser } from "@/lib/firebase-db";
+import { ensureUserExists, getUserByReferralCode, updateUser } from "@/lib/firebase-db";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -10,28 +10,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    let user = await getUserByFirebaseUid(uid);
+    let user = await ensureUserExists(uid, { email, name, photoURL });
 
-    if (!user) {
-      let referrerId = null;
-      if (referralCode) {
-        const referrer = await getUserByReferralCode(referralCode);
-        if (referrer) {
-          referrerId = referrer.id;
-        }
+    if (referralCode && !user.referredById) {
+      const referrer = await getUserByReferralCode(referralCode);
+      if (referrer && referrer.id !== user.id) {
+        user = await updateUser(user.id, { referredById: referrer.id });
       }
-
-      const newReferralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-      user = await createUser({
-        firebaseUid: uid,
-        email,
-        name,
-        photoURL,
-        referralCode: newReferralCode,
-        referredById: referrerId,
-        role: "USER",
-      });
     }
 
     return NextResponse.json({ user });

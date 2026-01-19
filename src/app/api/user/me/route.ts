@@ -1,19 +1,15 @@
-import { getUserByFirebaseUid, getPlan, getReferrals } from "@/lib/firebase-db";
+import { ensureUserExists, getPlan, getReferrals } from "@/lib/firebase-db";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { uid } = await req.json();
+    const { uid, email, name, photoURL } = await req.json();
 
     if (!uid) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await getUserByFirebaseUid(uid);
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const user = await ensureUserExists(uid, { email, name, photoURL });
 
     const plan = user.planId ? await getPlan(user.planId) : null;
     const referrals = await getReferrals(user.id, 1);
