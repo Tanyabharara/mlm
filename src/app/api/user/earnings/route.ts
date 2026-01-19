@@ -1,4 +1,4 @@
-import { getUserByEmail, getTransactions, ensureUserExists } from "@/lib/firebase-db";
+import { getUserByEmail, getTransactions, getUserByFirebaseUid } from "@/lib/firebase-db";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 
@@ -14,7 +14,10 @@ export async function GET() {
 
     let user;
     if (userUid) {
-      user = await ensureUserExists(userUid, { email: userEmail || undefined });
+      user = await getUserByFirebaseUid(userUid);
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
     } else if (userEmail) {
       user = await getUserByEmail(userEmail);
       if (!user) {

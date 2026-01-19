@@ -15,13 +15,23 @@ export async function POST(req: Request) {
     if (referralCode && !user.referredById) {
       const referrer = await getUserByReferralCode(referralCode);
       if (referrer && referrer.id !== user.id) {
-        user = await updateUser(user.id, { referredById: referrer.id });
+        try {
+          user = await updateUser(user.id, { referredById: referrer.id });
+        } catch (error: any) {
+          if (error?.message?.includes("already referred")) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+          }
+          throw error;
+        }
       }
     }
 
     return NextResponse.json({ user });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error syncing user:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    if (error?.message?.includes("already exists") || error?.message?.includes("already associated")) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }

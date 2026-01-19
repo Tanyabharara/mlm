@@ -162,8 +162,47 @@ export async function getUserByEmail(email: string) {
   }
 }
 
+async function generateUniqueReferralCode(): Promise<string> {
+  let attempts = 0;
+  const maxAttempts = 10;
+  
+  while (attempts < maxAttempts) {
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const existing = await getUserByReferralCode(code);
+    if (!existing) {
+      return code;
+    }
+    attempts++;
+  }
+  
+  throw new Error("Failed to generate unique referral code after multiple attempts");
+}
+
 export async function createUser(data: any) {
   try {
+    if (data.email) {
+      const existingUser = await getUserByEmail(data.email);
+      if (existingUser) {
+        throw new Error(`User with email ${data.email} already exists`);
+      }
+    }
+    
+    if (data.firebaseUid) {
+      const existingUser = await getUserByFirebaseUid(data.firebaseUid);
+      if (existingUser) {
+        throw new Error(`User with Firebase UID ${data.firebaseUid} already exists`);
+      }
+    }
+    
+    if (!data.referralCode) {
+      data.referralCode = await generateUniqueReferralCode();
+    } else {
+      const existingUser = await getUserByReferralCode(data.referralCode);
+      if (existingUser) {
+        throw new Error(`Referral code ${data.referralCode} already exists`);
+      }
+    }
+    
     const now = new Date();
     const docRef = await db.collection("users").add({
       ...data,
@@ -178,6 +217,9 @@ export async function createUser(data: any) {
       const errorMsg = "Firestore database not found. Please create a Native mode database in Firebase Console: https://console.firebase.google.com";
       console.error(errorMsg);
       throw new Error(errorMsg);
+    }
+    if (error?.message?.includes("already exists")) {
+      throw error;
     }
     console.error("Error creating user:", error);
     throw error;
@@ -209,7 +251,15 @@ export async function ensureUserExists(uid: string, userData?: { email?: string;
       email = `${uid}@temp.com`;
     }
     
-    const newReferralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    if (email && email !== `${uid}@temp.com`) {
+      const existingUserByEmail = await getUserByEmail(email);
+      if (existingUserByEmail) {
+        if ((existingUserByEmail as any).firebaseUid === uid) {
+          return existingUserByEmail;
+        }
+        throw new Error(`Email ${email} is already associated with another account`);
+      }
+    }
     
     try {
       user = await createUser({
@@ -217,7 +267,6 @@ export async function ensureUserExists(uid: string, userData?: { email?: string;
         email,
         name: name || "User",
         photoURL: photoURL || "",
-        referralCode: newReferralCode,
         referredById: null,
         role: "USER",
       });
@@ -240,6 +289,9 @@ export async function ensureUserExists(uid: string, userData?: { email?: string;
         console.error(errorMsg);
         throw new Error("Firestore database not found. Please create a Native mode database in Firebase Console. See console for details.");
       }
+      if (error?.message?.includes("already exists")) {
+        throw error;
+      }
       throw error;
     }
   }
@@ -248,6 +300,31 @@ export async function ensureUserExists(uid: string, userData?: { email?: string;
 }
 
 export async function updateUser(id: string, data: any) {
+  const user = await getUserById(id);
+  if (!user) {
+    throw new Error("User not found");
+  }
+  
+  const userData = user as any;
+  
+  if (data.email && data.email !== userData.email) {
+    const existingUser = await getUserByEmail(data.email);
+    if (existingUser && (existingUser as any).id !== id) {
+      throw new Error(`Email ${data.email} is already associated with another account`);
+    }
+  }
+  
+  if (data.referralCode && data.referralCode !== userData.referralCode) {
+    const existingUser = await getUserByReferralCode(data.referralCode);
+    if (existingUser && (existingUser as any).id !== id) {
+      throw new Error(`Referral code ${data.referralCode} is already in use`);
+    }
+  }
+  
+  if (data.referredById && userData.referredById && data.referredById !== userData.referredById) {
+    throw new Error("User can only be referred by one person. Referrer cannot be changed.");
+  }
+  
   await db.collection("users").doc(id).update({
     ...data,
     updatedAt: new Date(),
@@ -367,9 +444,11 @@ export async function getUplineChain(userId: string): Promise<string[]> {
 
   while (currentId) {
     const user = await getUserById(currentId);
-    if (!user || !user.referredById) break;
-    chain.push(user.referredById);
-    currentId = user.referredById;
+    if (!user) break;
+    const userData = user as any;
+    if (!userData.referredById) break;
+    chain.push(userData.referredById);
+    currentId = userData.referredById;
   }
 
   return chain;
