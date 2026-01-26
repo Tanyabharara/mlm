@@ -1,46 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #fafbfc;
-  --foreground: #2d3748;
-  --primary: #a8b5ff;
-  --primary-light: #c5d0ff;
-  --primary-dark: #8b9aff;
-  --secondary: #b8e6d3;
-  --accent: #ffd6cc;
-  --card: #ffffff;
-  --border: #e8ecf0;
-  --text-muted: #718096;
-  --text-light: #a0aec0;
-  --success: #b8e6d3;
-  --warning: #ffe4b8;
-  --error: #ffcccb;
-  --pastel-blue: #e6f0ff;
-  --pastel-purple: #f0e6ff;
-  --pastel-pink: #ffe6f0;
-  --pastel-green: #e6ffe6;
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+  --primary: #6C63FF;
+  --primary-glow: rgba(108, 99, 255, 0.4);
+  --secondary: #4CAF50;
+  --accent: #FFD700;
+  --card: #FFFFFF;
+  --card-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05);
+  --border: #F1F5F9;
+  --text-muted: #64748B;
+  --text-light: #94A3B8;
+
+  --silver-gradient: linear-gradient(135deg, #94A3B8 0%, #E2E8F0 100%);
+  --gold-gradient: linear-gradient(135deg, #EAB308 0%, #FEF9C3 100%);
+  --platinum-gradient: linear-gradient(135deg, #6C63FF 0%, #C084FC 100%);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-outfit: 'Outfit', sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #1a1d24;
-    --foreground: #e2e8f0;
-    --card: #252932;
-    --border: #2d3441;
-    --text-muted: #94a3b8;
-    --text-light: #64748b;
-    --primary: #6b7fd7;
-    --pastel-blue: #1e2a3a;
-    --pastel-purple: #2a1e3a;
-    --pastel-pink: #3a1e2a;
-    --pastel-green: #1e3a2a;
+    --background: #020617;
+    --foreground: #F8FAFC;
+    --card: #0F172A;
+    --card-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+    --border: #1E293B;
+    --text-muted: #94A3B8;
+    --text-light: #64748B;
   }
 }
 
@@ -51,17 +45,61 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-html {
-  scroll-behavior: smooth;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Outfit', sans-serif;
 }
 
-@media (max-width: 768px) {
-  body {
-    font-size: 14px;
+@layer utilities {
+  .premium-shadow {
+    box-shadow: var(--card-shadow);
+  }
+
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .text-gradient {
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .gradient-silver {
+    background: var(--silver-gradient);
+  }
+
+  .gradient-gold {
+    background: var(--gold-gradient);
+  }
+
+  .gradient-platinum {
+    background: var(--platinum-gradient);
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-20px);
+    }
   }
 }

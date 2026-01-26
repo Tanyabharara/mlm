@@ -10,5 +10,11 @@ export interface EarningsData {
     totalEarnings: string;
     directIncome: string;
     teamIncome: string;
+    poolIncome: string;
+    autoPool: {
+        name: string;
+        filled: number;
+        total: number;
+    };
     recentTransactions: Transaction[];
 }

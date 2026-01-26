@@ -1,87 +1,74 @@
-import { getUserByFirebaseUid, getReferrals } from "@/lib/firebase-db";
 import { verifyAuthToken } from "@/lib/auth-server";
 import { NextResponse } from "next/server";
+import { PrismaClient } from "@prisma/client";
 
-function buildNetworkNodes(
-  userId: string,
-  userName: string,
-  referrals: any[],
-  depth: number = 0,
-  xOffset: number = 0,
-  parentId?: string
-): { nodes: any[]; edges: any[]; nextX: number } {
-  const nodes: any[] = [];
-  const edges: any[] = [];
-  let currentX = xOffset;
+const prisma = new PrismaClient();
 
-  if (depth === 0) {
-    nodes.push({
-      id: userId,
-      data: { label: userName || "You" },
-      position: { x: 250, y: 0 },
-      type: "input",
+async function getReferralsRecursive(userId: number, currentLevel: number, maxLevel: number): Promise<any[]> {
+  if (currentLevel > maxLevel) return [];
+
+  const referrals = await prisma.user.findMany({
+    where: { referredById: userId }
+  });
+
+  const results = [];
+  for (const ref of referrals) {
+    const children = await getReferralsRecursive(ref.id, currentLevel + 1, maxLevel);
+    results.push({
+      id: ref.id.toString(),
+      data: {
+        label: ref.name || "User",
+        level: currentLevel,
+        isRoot: false
+      },
+      referrals: children
     });
-  } else {
-    nodes.push({
-      id: userId,
-      data: { label: userName || "User" },
-      position: { x: currentX, y: depth * 100 },
-    });
+  }
+  return results;
+}
+
+function flattenNodes(referrals: any[], nodes: any[] = [], edges: any[] = [], parentId?: string) {
+  for (const ref of referrals) {
+    nodes.push({ id: ref.id, data: ref.data });
     if (parentId) {
-      edges.push({
-        id: `e${parentId}-${userId}`,
-        source: parentId,
-        target: userId,
-      });
+      edges.push({ id: `e${parentId}-${ref.id}`, source: parentId, target: ref.id });
     }
+    flattenNodes(ref.referrals, nodes, edges, ref.id);
   }
-
-  let nextX = currentX;
-  for (let i = 0; i < referrals.length; i++) {
-    const referral = referrals[i];
-    const nested = buildNetworkNodes(
-      referral.id,
-      referral.name || "User",
-      referral.referrals || [],
-      depth + 1,
-      nextX,
-      userId
-    );
-    nodes.push(...nested.nodes);
-    edges.push(...nested.edges);
-    nextX = nested.nextX + 200;
-  }
-
-  return { nodes, edges, nextX: Math.max(nextX, currentX + 200) };
 }
 
 export async function POST(req: Request) {
   try {
     const { uid } = await req.json();
-
     const verifiedUid = await verifyAuthToken(req);
+
     if (!verifiedUid || verifiedUid !== uid) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await getUserByFirebaseUid(verifiedUid);
+    const user = await prisma.user.findUnique({
+      where: { firebaseUid: verifiedUid }
+    });
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const userId = (user as any).id as string;
-    const userName = (user as any).name || "You";
+    // Fetch 3 levels deep for the tree visualization
+    const referrals = await getReferralsRecursive(user.id, 1, 3);
 
-    const referrals = await getReferrals(userId, 3);
-    const { nodes, edges } = buildNetworkNodes(
-      userId,
-      userName,
-      referrals as any[]
-    );
+    const nodes: any[] = [{
+      id: user.id.toString(),
+      data: { label: user.name || "You", isRoot: true, level: 0 },
+      type: "input"
+    }];
+    const edges: any[] = [];
+
+    flattenNodes(referrals, nodes, edges, user.id.toString());
 
     return NextResponse.json({ nodes, edges });
-  } catch (error) {
+  } catch (error: any) {
+    console.error("[API Network] Error:", error.message);
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
 }

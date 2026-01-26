@@ -1,6 +1,6 @@
 {
-  "name": "MLM Platform",
-  "short_name": "MLM",
+  "name": "ottfy",
+  "short_name": "ottfy",
   "description": "Multi-Level Income Platform",
   "start_url": "/",
   "display": "standalone",
@@ -22,4 +22,3 @@
     }
   ]
 }
-

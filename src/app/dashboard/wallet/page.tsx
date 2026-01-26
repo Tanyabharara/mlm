@@ -1,23 +1,260 @@
 "use client";
-import { Wallet } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+    Wallet,
+    ArrowUpRight,
+    ArrowDownRight,
+    Clock,
+    CheckCircle2,
+    TrendingUp,
+    Users,
+    Target,
+    ArrowRight,
+    Info,
+    DollarSign,
+    Gift,
+    PlusCircle,
+    MinusCircle,
+    Filter,
+    ShieldCheck,
+    Lock,
+    Sparkles,
+    CreditCard,
+    ArrowLeftRight
+} from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { EarningsData } from "@/types/earnings";
 
 export default function WalletPage() {
+    const { user: authUser } = useAuth();
+    const [filter, setFilter] = useState("all");
+
+    // Real Earnings Data Query
+    const { data: earnings, isLoading: earningsLoading } = useQuery<EarningsData>({
+        queryKey: ["earnings", authUser?.email],
+        queryFn: async () => {
+            const response = await fetch("/api/user/earnings", {
+                headers: {
+                    "x-user-email": authUser?.email || "",
+                    Authorization: `Bearer ${await authUser!.getIdToken()}`,
+                },
+            });
+            if (!response.ok) throw new Error("Failed to fetch earnings");
+            return response.json();
+        },
+        enabled: !!authUser?.uid,
+    });
+
+    const isLoading = earningsLoading;
+    const availableBalance = Number(earnings?.totalEarnings || 0);
+
+    const filteredTransactions = useMemo(() => {
+        if (!earnings?.recentTransactions) return [];
+        if (filter === "all") return earnings.recentTransactions;
+        if (filter === "income") return earnings.recentTransactions.filter(t => t.type === "CREDIT");
+        if (filter === "withdrawal") return earnings.recentTransactions.filter(t => t.type === "DEBIT");
+        return earnings.recentTransactions;
+    }, [earnings, filter]);
+
+    if (isLoading) {
+        return (
+            <div className="flex h-[70vh] items-center justify-center">
+                <div className="w-10 h-10 border-4 border-[#6C63FF] border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
+
+    const poolFillPercent = Math.round(((earnings?.autoPool?.filled || 0) / (earnings?.autoPool?.total || 27)) * 100);
+
     return (
-        <div className="space-y-5 md:space-y-6">
-            <div>
-                <h1 className="text-2xl md:text-3xl font-semibold mb-1.5 text-[#2d3748] dark:text-[#e2e8f0] tracking-tight">
-                    Wallet
-                </h1>
-                <p className="text-sm md:text-base text-[#718096] dark:text-[#94a3b8]">Manage your earnings and withdrawals</p>
+        <div className="max-w-7xl mx-auto space-y-10 pb-20 px-4 md:px-0">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-1">
+                    <h1 className="text-4xl md:text-5xl font-black tracking-tighter">Wallet Hub</h1>
+                    <p className="text-slate-400 font-medium">Manage your USDT settlements and pool progress 💎</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <button className="px-6 py-3 bg-[#6C63FF] text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-[#6C63FF]/20 flex items-center gap-2">
+                        <PlusCircle size={14} /> Deposit
+                    </button>
+                    <button className="px-6 py-3 bg-white dark:bg-slate-900 border border-gray-100 dark:border-white/5 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                        Withdraw
+                    </button>
+                </div>
             </div>
 
-            <div className="bg-white dark:bg-[#252932] rounded-xl border border-[#e8ecf0] dark:border-[#2d3441] p-8 md:p-12 text-center">
-                <div className="inline-flex p-3 bg-[#e6f0ff] dark:bg-[#1e2a3a] rounded-full mb-3 border border-[#c5d0ff] dark:border-[#3a4a6a]">
-                    <Wallet className="w-6 h-6 text-[#4a7cff] dark:text-[#6b9aff]" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                {/* 1. Main Balance Card (Premium) */}
+                <div className="bg-[#6C63FF] rounded-[48px] p-10 text-white relative overflow-hidden shadow-2xl shadow-[#6C63FF]/20">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-[60px]" />
+                    <div className="relative z-10 space-y-8">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 px-3 py-1 bg-white/10 rounded-full border border-white/10">Active Balance</span>
+                            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center border border-white/20">
+                                <Wallet className="w-5 h-5" />
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <h2 className="text-6xl font-black tracking-tighter">${availableBalance.toLocaleString()}</h2>
+                            <p className="text-xs font-bold text-white/60">USDT (Binance Smart Chain)</p>
+                        </div>
+                        <div className="pt-8 border-t border-white/10 flex items-center gap-6">
+                            <div>
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-40 mb-1">Total Payouts</p>
+                                <p className="text-lg font-black">$0.00</p>
+                            </div>
+                            <div>
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-40 mb-1">Locked (Pool)</p>
+                                <p className="text-lg font-black">$100.00</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <h2 className="text-lg md:text-xl font-semibold text-[#2d3748] dark:text-[#e2e8f0] mb-1.5">Coming Soon</h2>
-                <p className="text-sm text-[#718096] dark:text-[#94a3b8]">Wallet features are being developed</p>
+
+                {/* 2. Auto-Pool Progress (Circular) */}
+                <div className="bg-white dark:bg-slate-900 rounded-[48px] p-10 border border-gray-100 dark:border-white/5 flex flex-col items-center justify-center text-center space-y-6 shadow-xl relative group">
+                    <div className="relative w-48 h-48">
+                        {/* Circular Progress SVG */}
+                        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                            <circle
+                                cx="50" cy="50" r="40"
+                                className="fill-none stroke-slate-50 dark:stroke-white/5"
+                                strokeWidth="8"
+                            />
+                            <motion.circle
+                                cx="50" cy="50" r="40"
+                                className="fill-none stroke-[#6C63FF]"
+                                strokeWidth="8"
+                                strokeLinecap="round"
+                                strokeDasharray="251.2"
+                                initial={{ strokeDashoffset: 251.2 }}
+                                animate={{ strokeDashoffset: 251.2 - (251.2 * poolFillPercent) / 100 }}
+                                transition={{ duration: 2, ease: "circOut" }}
+                            />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-4xl font-black tracking-tighter text-[#6C63FF]">{poolFillPercent}%</span>
+                            <span className="text-[8px] font-black uppercase text-slate-400">Filled</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black tracking-tighter">Auto-Pool Logic</h3>
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
+                            {earnings?.autoPool?.filled || 0} / {earnings?.autoPool?.total || 27} Members Joined
+                        </p>
+                    </div>
+                    <div className="absolute top-6 right-6 p-2 bg-blue-50 dark:bg-blue-900/20 text-[#6C63FF] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Info size={14} />
+                    </div>
+                </div>
+
+                {/* 3. Quick Actions Card */}
+                <div className="bg-white dark:bg-slate-900 rounded-[48px] p-10 border border-gray-100 dark:border-white/5 shadow-xl space-y-8">
+                    <h3 className="text-xl font-black tracking-tighter">Asset Management</h3>
+                    <div className="space-y-4">
+                        <ActionItem
+                            icon={<CreditCard className="text-[#6C63FF]" />}
+                            title="Withdraw USDT"
+                            desc="Fast BEP-20 payouts"
+                            color="bg-[#6C63FF]/5"
+                        />
+                        <ActionItem
+                            icon={<ArrowLeftRight className="text-[#4CAF50]" />}
+                            title="Internal Transfer"
+                            desc="Move founds to nodes"
+                            color="bg-[#4CAF50]/5"
+                        />
+                        <ActionItem
+                            icon={<ShieldCheck className="text-[#FFD700]" />}
+                            title="Node Security"
+                            desc="Manage auth levels"
+                            color="bg-[#FFD700]/5"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* 4. Transactions List (Premium) */}
+            <div className="bg-white dark:bg-slate-900 rounded-[48px] border border-gray-100 dark:border-white/5 shadow-xl overflow-hidden">
+                <div className="p-8 border-b border-slate-50 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div>
+                        <h3 className="text-xl font-black tracking-tighter">Verified Clearances</h3>
+                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">A record of all your node settlements</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <FilterBtn active={filter === "all"} onClick={() => setFilter("all")} label="All Syncs" />
+                        <FilterBtn active={filter === "income"} onClick={() => setFilter("income")} label="Rewards" />
+                        <FilterBtn active={filter === "withdrawal"} onClick={() => setFilter("withdrawal")} label="Payouts" />
+                    </div>
+                </div>
+
+                <div className="divide-y divide-slate-50 dark:divide-white/5">
+                    {filteredTransactions.length === 0 ? (
+                        <div className="p-20 text-center text-slate-300 font-bold uppercase tracking-widest text-xs">No ledger data to display.</div>
+                    ) : (
+                        filteredTransactions.map((tx: any) => (
+                            <TxRow key={tx.id} tx={tx} />
+                        ))
+                    )}
+                </div>
             </div>
         </div>
+    );
+}
+
+function ActionItem({ icon, title, desc, color }: any) {
+    return (
+        <div className="flex items-center gap-4 group cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 p-3 rounded-2xl transition-all">
+            <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center transition-transform group-hover:scale-110`}>
+                {icon}
+            </div>
+            <div>
+                <p className="text-sm font-black text-slate-900 dark:text-white mb-0.5">{title}</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase leading-none">{desc}</p>
+            </div>
+            <ArrowRight size={14} className="ml-auto text-slate-200 group-hover:text-[#6C63FF] transition-colors" />
+        </div>
+    );
+}
+
+function TxRow({ tx }: any) {
+    const isCredit = tx.type === "CREDIT";
+    return (
+        <div className="p-8 hover:bg-slate-50 dark:hover:bg-white/[0.02] flex items-center justify-between transition-colors group">
+            <div className="flex items-center gap-5">
+                <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${isCredit ? 'bg-[#4CAF50]/10 border-[#4CAF50]/10 text-[#4CAF50]' : 'bg-red-50 border-red-100 text-red-400'}`}>
+                    {isCredit ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
+                </div>
+                <div>
+                    <p className="text-sm font-black text-slate-900 dark:text-white leading-none mb-1.5">{tx.description}</p>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(tx.createdAt).toLocaleDateString()}</span>
+                        <div className="w-1 h-1 rounded-full bg-slate-300" />
+                        <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 rounded-full text-[8px] font-black text-slate-400 uppercase">{tx.category}</span>
+                    </div>
+                </div>
+            </div>
+            <div className="text-right">
+                <p className={`text-base font-black ${isCredit ? 'text-[#4CAF50]' : 'text-red-500'}`}>
+                    {isCredit ? '+' : '-'}${Number(tx.amount).toFixed(2)}
+                </p>
+                <p className="text-[10px] font-bold text-slate-300 uppercase tracking-tighter">Settled</p>
+            </div>
+        </div>
+    );
+}
+
+function FilterBtn({ active, onClick, label }: any) {
+    return (
+        <button
+            onClick={onClick}
+            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${active ? 'bg-[#6C63FF] text-white shadow-lg' : 'bg-slate-50 dark:bg-white/5 text-slate-400 hover:text-[#6C63FF]'}`}
+        >
+            {label}
+        </button>
     );
 }

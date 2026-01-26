@@ -3,14 +3,14 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Users, Wallet, TrendingUp, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, Users, Wallet, TrendingUp, LogOut, Menu, X, ShieldAlert } from "lucide-react";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, userData } = useAuth() as any;
   const router = useRouter();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -37,7 +37,7 @@ export default function DashboardLayout({
       <aside className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-[#252932] border-r border-[#e8ecf0] dark:border-[#2d3441] flex flex-col transform transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="p-5 md:p-6 border-b border-[#e8ecf0] dark:border-[#2d3441]">
           <div className="flex items-center justify-between">
-            <h1 className="text-lg md:text-xl font-semibold text-[#2d3748] dark:text-[#e2e8f0] tracking-tight">MLM Platform</h1>
+            <h1 className="text-lg md:text-xl font-semibold text-[#2d3748] dark:text-[#e2e8f0] tracking-tight">ottfy</h1>
             <button
               onClick={() => setMobileMenuOpen(false)}
               className="md:hidden p-2 hover:bg-[#f5f7fa] dark:hover:bg-[#2d3441] rounded-lg transition-colors"
@@ -51,6 +51,14 @@ export default function DashboardLayout({
           <NavItem href="/dashboard/network" icon={<Users size={18} />} label="My Network" active={pathname === "/dashboard/network"} />
           <NavItem href="/dashboard/earnings" icon={<TrendingUp size={18} />} label="Earnings" active={pathname === "/dashboard/earnings"} />
           <NavItem href="/dashboard/wallet" icon={<Wallet size={18} />} label="Wallet" active={pathname === "/dashboard/wallet"} />
+
+          {/* Admin Link */}
+          {userData?.role === 'ADMIN' && (
+            <div className="pt-4 mt-4 border-t border-[#e8ecf0] dark:border-[#2d3441]">
+              <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-widest text-[#6C63FF] opacity-50">Administration</p>
+              <NavItem href="/dashboard/admin/settings" icon={<ShieldAlert size={18} />} label="Platform Config" active={pathname === "/dashboard/admin/settings"} />
+            </div>
+          )}
         </nav>
         <div className="p-4 border-t border-[#e8ecf0] dark:border-[#2d3441] space-y-3">
           <div className="flex items-center gap-3 p-2.5 rounded-lg bg-[#f5f7fa] dark:bg-[#1e2128]">
@@ -116,11 +124,10 @@ function NavItem({ href, icon, label, active }: { href: string; icon: React.Reac
   return (
     <Link
       href={href}
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-        active
-          ? "bg-[#e6f0ff] dark:bg-[#1e2a3a] text-[#4a5568] dark:text-[#cbd5e0] border-l-2 border-[#a8b5ff] dark:border-[#6b7fd7]"
-          : "text-[#718096] dark:text-[#94a3b8] hover:bg-[#f5f7fa] dark:hover:bg-[#1e2128]"
-      }`}
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${active
+        ? "bg-[#e6f0ff] dark:bg-[#1e2a3a] text-[#4a5568] dark:text-[#cbd5e0] border-l-2 border-[#a8b5ff] dark:border-[#6b7fd7]"
+        : "text-[#718096] dark:text-[#94a3b8] hover:bg-[#f5f7fa] dark:hover:bg-[#1e2128]"
+        }`}
     >
       <span className={active ? "text-[#6b7fd7] dark:text-[#8b9aff]" : ""}>{icon}</span>
       <span className="font-medium text-sm">{label}</span>

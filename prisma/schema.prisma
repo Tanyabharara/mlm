@@ -13,7 +13,7 @@ model User {
   email            String   @unique
   name             String?
   photoURL         String?
-  role             String   @default("USER")
+  role             String   @default("USER") // USER or ADMIN
   referralCode     String   @unique
   referredById     Int?
   referredBy       User?    @relation("ReferralTree", fields: [referredById], references: [id])
@@ -26,6 +26,7 @@ model User {
   purchases        Purchase[]
   transactions     Transaction[]
   withdrawalRequests WithdrawalRequest[]
+  poolEntries      AutoPoolEntry[]
 }
 
 model Plan {
@@ -38,6 +39,31 @@ model Plan {
   purchases        Purchase[]
 }
 
+model AutoPool {
+  id          Int             @id @default(autoincrement())
+  name        String          // Pool 1, Pool 2, Pool 3
+  entryFee    Decimal
+  matrixWidth Int             @default(3)
+  matrixDepth Int             @default(3)
+  reward      Decimal
+  entries     AutoPoolEntry[]
+}
+
+model AutoPoolEntry {
+  id          Int       @id @default(autoincrement())
+  user        User      @relation(fields: [userId], references: [id])
+  userId      Int
+  pool        AutoPool  @relation(fields: [poolId], references: [id])
+  poolId      Int
+  parentId    Int?
+  parent      AutoPoolEntry? @relation("PoolTree", fields: [parentId], references: [id])
+  children    AutoPoolEntry[] @relation("PoolTree")
+  level       Int       @default(1)
+  isCompleted Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+}
+
 model Purchase {
   id        Int      @id @default(autoincrement())
   user      User     @relation(fields: [userId], references: [id])
@@ -48,13 +74,28 @@ model Purchase {
 }
 
 model Transaction {
-  id          Int             @id @default(autoincrement())
-  user        User            @relation(fields: [userId], references: [id])
+  id          Int      @id @default(autoincrement())
+  user        User     @relation(fields: [userId], references: [id])
   userId      Int
   amount      Decimal
-  type        String          // CREDIT or DEBIT
+  type        String   // CREDIT or DEBIT
+  category    String   // DIRECT_INCOME, POOL_INCOME, WITHDRAWAL, RE_ENTRY
   description String?
+  txHash      String?  @unique // For on-chain cross-referencing
   createdAt   DateTime @default(now())
+}
+
+model PaymentIntent {
+  id              String   @id @default(cuid())
+  userId          Int
+  amount          Decimal  // e.g. 600
+  token           String   @default("USDT")
+  network         String   @default("BSC")
+  status          String   @default("INITIATED") // INITIATED, PENDING, VERIFIED, FAILED
+  txHash          String?  @unique
+  confirmations   Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model WithdrawalRequest {
@@ -65,4 +106,10 @@ model WithdrawalRequest {
   status      String   @default("PENDING")
   createdAt   DateTime @default(now())
   processedAt DateTime?
+}
+
+model AppConfig {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String // JSON or raw value
 }
