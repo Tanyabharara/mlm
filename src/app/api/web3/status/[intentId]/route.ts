@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from "@/lib/prisma";
 
 export async function GET(
     req: NextRequest,
-    { params }: { params: Promise<{ intentId: string }> }
+    { params }: { params: { intentId: string } }
 ) {
     try {
-        const { intentId } = await params;
+        const { intentId } = params;
 
         const intent = await prisma.paymentIntent.findUnique({
             where: { id: intentId },

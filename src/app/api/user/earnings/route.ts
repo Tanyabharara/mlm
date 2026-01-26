@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 import { adminAuth } from "@/lib/firebase-db";
-
-const prisma = new PrismaClient();
 
 export async function GET() {
   try {

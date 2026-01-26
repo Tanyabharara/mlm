@@ -1,8 +1,6 @@
 import { verifyAuthToken } from "@/lib/auth-server";
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "@/lib/prisma";
 
 async function getReferralsRecursive(userId: number, currentLevel: number, maxLevel: number): Promise<any[]> {
   if (currentLevel > maxLevel) return [];

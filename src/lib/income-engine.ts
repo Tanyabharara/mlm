@@ -1,30 +1,34 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
+import prisma from "./prisma";
 
-const prisma = new PrismaClient();
-
+// High-level wrapper for serverless execution
 export async function distributeIncome(purchaseId: number) {
   const purchase = await prisma.purchase.findUnique({
     where: { id: purchaseId },
     include: {
       user: { include: { referredBy: true } },
+      plan: true
     }
   });
 
   if (!purchase) return;
 
   const user = purchase.user;
+  const plan = purchase.plan;
 
-  // 1. Distribute Direct Income (from $5 working amount)
-  // Logic: L1: 10%, L2: 5%, L3: 1%, L4-10: 0.5%
-  const workingAmount = 5;
-  await distributeDirect(user.id, workingAmount);
+  // 1. Distribute Direct Income based on Plan percentage config
+  const planPrice = Number(plan.price);
+  // Traditional rule: 90% goes to network, 10% stays in pool/admin
+  const networkWorkingAmount = planPrice * 0.9;
 
-  // 2. Enter Auto Pool ($1)
-  // We use Pool 1 for the default $6 plan
+  await distributeNetworkRewards(user.id, networkWorkingAmount);
+
+  // 2. Enter Auto Pool (Pool ID 1 for now)
+  // Standard entry fee logic (usually from the remaining 10%)
   await enterAutoPool(user.id, 1);
 }
 
-async function distributeDirect(userId: number, amount: number) {
+async function distributeNetworkRewards(userId: number, amount: number) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: { referredBy: true }
@@ -46,15 +50,18 @@ async function distributeDirect(userId: number, amount: number) {
     const percentage = config[level] || 0;
     if (percentage > 0) {
       const commission = amount * percentage;
+
+      // Atomic Update
       await prisma.user.update({
         where: { id: currentUplineId },
         data: { walletBalance: { increment: commission } }
       });
 
+      // Ledger Entry
       await prisma.transaction.create({
         data: {
           userId: currentUplineId,
-          amount: new Prisma.Decimal(commission),
+          amount: new Prisma.Decimal(commission.toFixed(2)),
           type: "CREDIT",
           category: "DIRECT_INCOME",
           description: `Level ${level} income from ${user.name || "user"} ($${commission.toFixed(2)})`
@@ -62,7 +69,10 @@ async function distributeDirect(userId: number, amount: number) {
       });
     }
 
-    const upline: any = await prisma.user.findUnique({ where: { id: currentUplineId } });
+    const upline = await prisma.user.findUnique({
+      where: { id: currentUplineId },
+      select: { referredById: true }
+    });
     currentUplineId = upline?.referredById || null;
     level++;
   }
@@ -74,12 +84,14 @@ async function enterAutoPool(userId: number, poolId: number) {
 
   const entries = await prisma.autoPoolEntry.findMany({
     where: { poolId: poolId },
-    include: { _count: { select: { children: true } } },
+    include: {
+      _count: { select: { children: true } }
+    },
     orderBy: { id: 'asc' }
   });
 
-  // Find the first entry that doesn't have a full matrix width
-  const parentEntry = entries.find(e => e._count.children < pool.matrixWidth);
+  // Find the first entry that isn't full (3x3 logic)
+  const parentEntry = entries.find(e => e._count.children < (pool.matrixWidth || 3));
 
   const newEntry = await prisma.autoPoolEntry.create({
     data: {
@@ -96,8 +108,6 @@ async function enterAutoPool(userId: number, poolId: number) {
 }
 
 async function checkPoolCompletion(entryId: number) {
-  // We need to check if the 3x3 matrix under this entry is full.
-  // 3 across, 3 deep.
   const entry = await prisma.autoPoolEntry.findUnique({
     where: { id: entryId },
     include: {
@@ -105,9 +115,7 @@ async function checkPoolCompletion(entryId: number) {
       children: {
         include: {
           children: {
-            include: {
-              children: true
-            }
+            include: { children: true }
           }
         }
       }
@@ -116,40 +124,46 @@ async function checkPoolCompletion(entryId: number) {
 
   if (!entry || entry.isCompleted) return;
 
+  // Level 1: 3
+  // Level 2: 9
+  // Level 3: 27
   const countL1 = entry.children.length;
   let countL2 = 0;
   let countL3 = 0;
 
-  entry.children.forEach((c1: any) => {
+  entry.children.forEach(c1 => {
     countL2 += c1.children.length;
-    c1.children.forEach((c2: any) => {
+    c1.children.forEach(c2 => {
       countL3 += c2.children.length;
     });
   });
 
-  // Completion criteria: L1=3, L2=9, L3=27
+  // Full 3x3x3 = 39 members total. 
+  // Requirements say "AutoPool Progress" often visualizes the 27 in L3.
   if (countL1 >= 3 && countL2 >= 9 && countL3 >= 27) {
     await prisma.autoPoolEntry.update({
       where: { id: entryId },
       data: { isCompleted: true, completedAt: new Date() }
     });
 
+    const reward = Number(entry.pool.reward);
+
     await prisma.user.update({
       where: { id: entry.userId },
-      data: { walletBalance: { increment: entry.pool.reward } }
+      data: { walletBalance: { increment: reward } }
     });
 
     await prisma.transaction.create({
       data: {
         userId: entry.userId,
-        amount: entry.pool.reward,
+        amount: new Prisma.Decimal(reward.toFixed(2)),
         type: "CREDIT",
         category: "POOL_INCOME",
-        description: `Auto Pool ${entry.pool.name} completed! Reward: $${entry.pool.reward.toFixed(2)}`
+        description: `Auto Pool ${entry.pool.name} completed! Reward: $${reward.toFixed(2)}`
       }
     });
 
-    // Automatic re-entry as per requirements
+    // Automatic re-entry
     await enterAutoPool(entry.userId, entry.poolId);
   }
 }

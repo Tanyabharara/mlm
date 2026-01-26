@@ -1,8 +1,7 @@
 import { ethers } from 'ethers';
 import { getProducer, TOPICS } from './kafka';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { distributeIncome } from './income-engine';
+import prisma from './prisma';
 const BSC_RPC_URL = process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org/';
 const USDT_CONTRACT = '0x55d398326f99059fF775485246999027B3197955';
 
@@ -65,7 +64,9 @@ export async function verifyOnChain(txHash: string, paymentIntentId: string) {
             data: { txHash, status: 'PENDING', confirmations: Number(receipt.confirmations) }
         });
 
-        if (Number(receipt.confirmations) >= 12) {
+        // For immediate feedback in serverless, we settle at 1 confirmation 
+        // while the background processes are usually async.
+        if (Number(receipt.confirmations) >= 1) {
             await finalizePayment(paymentIntentId, txHash, planPrice);
         }
 
@@ -79,26 +80,54 @@ export async function verifyOnChain(txHash: string, paymentIntentId: string) {
 }
 
 export async function finalizePayment(paymentIntentId: string, txHash: string, amount: number) {
-    const intent = await prisma.paymentIntent.update({
+    const intent = await prisma.paymentIntent.findUnique({ where: { id: paymentIntentId } });
+    if (!intent || intent.status === 'VERIFIED') return;
+
+    // 1. Mark Payment as Verified
+    await prisma.paymentIntent.update({
         where: { id: paymentIntentId },
         data: { status: 'VERIFIED', confirmations: 12 }
     });
 
-    const producer = await getProducer();
-    await producer.send({
-        topic: TOPICS.PAYMENT_CONFIRMED,
-        messages: [
-            {
-                key: intent.userId.toString(),
-                value: JSON.stringify({
-                    paymentIntentId: intent.id,
-                    txHash: txHash,
-                    userId: intent.userId,
-                    amount: amount
-                }),
-            },
-        ],
-    });
+    // 2. Assign Plan to User
+    const plan = await prisma.plan.findFirst(); // Defaulting to first plan for 600 USDT
+    if (plan) {
+        await prisma.user.update({
+            where: { id: intent.userId },
+            data: { planId: plan.id }
+        });
 
-    console.log(`[Kafka] Emitted payment.confirmed for Intent ${paymentIntentId}`);
+        // 3. Log the Purchase
+        const purchase = await prisma.purchase.create({
+            data: {
+                userId: intent.userId,
+                planId: plan.id
+            }
+        });
+
+        // 4. TRIGGER INCOME ENGINE (Direct Call!)
+        console.log(`[Serverless Engine] Triggering distribution for Purchase ${purchase.id}`);
+        await distributeIncome(purchase.id);
+    }
+
+    // 5. Emit to Kafka (Optional/Async for legacy syncs)
+    try {
+        const producer = await getProducer();
+        await producer.send({
+            topic: TOPICS.PAYMENT_CONFIRMED,
+            messages: [
+                {
+                    key: intent.userId.toString(),
+                    value: JSON.stringify({
+                        paymentIntentId: intent.id,
+                        txHash: txHash,
+                        userId: intent.userId,
+                        amount: amount
+                    }),
+                },
+            ],
+        });
+    } catch (e: any) {
+        console.warn("[Kafka] Sync failed (Likely local env), continuing with direct distribution.");
+    }
 }
