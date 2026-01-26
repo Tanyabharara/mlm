@@ -1,4 +1,5 @@
-import { prisma } from "@/lib/db";
+import { ensureUserExists, getUserByReferralCode, updateUser } from "@/lib/firebase-db";
+import { verifyAuthToken } from "@/lib/auth-server";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -6,46 +7,38 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { uid, email, name, photoURL, referralCode } = body;
 
-    if (!uid || !email) {
+    const verifiedUid = await verifyAuthToken(req);
+    if (!verifiedUid) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!email) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Check if user exists
-    let user = await prisma.user.findUnique({
-      where: { firebaseUid: uid },
-    });
+    // Always trust the UID from the verified token, not from the body
+    let user = await ensureUserExists(verifiedUid, { email, name, photoURL });
 
-    if (!user) {
-      // Create new user
-      // Handle referral logic
-      let referrerId = null;
-      if (referralCode) {
-        const referrer = await prisma.user.findUnique({
-            where: { referralCode },
-        });
-        if (referrer) {
-            referrerId = referrer.id;
+    if (referralCode && !user.referredById) {
+      const referrer = await getUserByReferralCode(referralCode);
+      if (referrer && referrer.id !== user.id) {
+        try {
+          user = await updateUser(user.id, { referredById: referrer.id });
+        } catch (error: any) {
+          if (error?.message?.includes("already referred")) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+          }
+          throw error;
         }
       }
-
-      // Generate own referral code (simple random for now)
-      const newReferralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-      user = await prisma.user.create({
-        data: {
-          firebaseUid: uid,
-          email,
-          name,
-          photoURL,
-          referralCode: newReferralCode,
-          referredById: referrerId,
-        },
-      });
     }
 
     return NextResponse.json({ user });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error syncing user:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    if (error?.message?.includes("already exists") || error?.message?.includes("already associated")) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }

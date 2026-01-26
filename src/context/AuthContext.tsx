@@ -29,9 +29,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
       if (user) {
          try {
+             const idToken = await user.getIdToken();
              await fetch("/api/auth/sync", {
                  method: "POST",
-                 headers: { "Content-Type": "application/json" },
+                 headers: {
+                   "Content-Type": "application/json",
+                   Authorization: `Bearer ${idToken}`,
+                 },
                  body: JSON.stringify({
                      uid: user.uid,
                      email: user.email,
