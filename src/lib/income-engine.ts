@@ -69,7 +69,7 @@ async function distributeNetworkRewards(userId: number, amount: number) {
       });
     }
 
-    const upline = await prisma.user.findUnique({
+    const upline: { referredById: number | null } | null = await prisma.user.findUnique({
       where: { id: currentUplineId },
       select: { referredById: true }
     });
