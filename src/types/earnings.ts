@@ -3,6 +3,7 @@ export interface Transaction {
     amount: string;
     type: "CREDIT" | "DEBIT";
     description: string;
+    category: string;
     createdAt: string;
 }
 
