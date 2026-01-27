@@ -366,9 +366,9 @@ export async function updateWalletBalance(id: string, amount: number, operation:
   invalidateCache("users:");
 }
 
-export async function getPlans() {
+export async function getPlans(): Promise<any[]> {
   const cacheKey = getCacheKey("plans");
-  const cached = getCached(cacheKey);
+  const cached = getCached<any[]>(cacheKey);
   if (cached) return cached;
 
   const snapshot = await db.collection("plans").get();
