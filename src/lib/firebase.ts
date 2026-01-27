@@ -21,17 +21,18 @@ if (!isFirebaseConfigured) {
   console.warn(`Firebase is missing configuration for: ${missingVars.join(", ")}. Authentication will not work correctly.`);
 }
 
-let app: FirebaseApp;
-let auth: Auth;
-let googleProvider = new GoogleAuthProvider();
+let app: FirebaseApp | undefined;
+let auth: Auth | undefined;
+const googleProvider = new GoogleAuthProvider();
 
-if (typeof window !== "undefined" && !getApps().length) {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-} else if (getApps().length) {
-    app = getApp();
-    auth = getAuth(app);
+if (typeof window !== "undefined") {
+    if (!getApps().length) {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+    } else {
+        app = getApp();
+        auth = getAuth(app);
+    }
 }
 
-// @ts-ignore
 export { app, auth, googleProvider, isFirebaseConfigured };
