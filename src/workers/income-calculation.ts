@@ -65,7 +65,10 @@ export async function startIncomeCalculationConsumer() {
 
                         totalDistributed += commission;
 
-                        const upline = await prisma.user.findUnique({ where: { id: currentUplineId } });
+                        const upline: { referredById: number | null } | null = await prisma.user.findUnique({ 
+                            where: { id: currentUplineId },
+                            select: { referredById: true }
+                        });
                         currentUplineId = upline?.referredById || null;
                     } else {
                         break;

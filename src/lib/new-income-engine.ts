@@ -32,11 +32,12 @@ export async function distributeDirectIncome(userId: number, purchaseAmount: num
         const rewardPercentage = levelRewards[level] || 0;
         if (rewardPercentage > 0) {
             const commission = Number(purchaseAmount) * rewardPercentage;
-            const upline = await prisma.user.update({
+            const upline: { referredById: number | null } = await prisma.user.update({
                 where: { id: currentUplineId },
                 data: {
                     walletBalance: { increment: commission }
-                }
+                },
+                select: { referredById: true }
             });
 
             await prisma.transaction.create({
