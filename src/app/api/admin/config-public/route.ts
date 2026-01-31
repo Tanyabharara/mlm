@@ -17,7 +17,9 @@ export async function GET(req: NextRequest) {
             });
         }
 
-        const { treasuryAddress, planPrice } = JSON.parse(config.value);
+        const parsed = JSON.parse(config.value);
+        const treasuryAddress = parsed.treasuryAddress || process.env.TREASURY_WALLET_ADDRESS || '0xYourTreasuryWalletAddressHere';
+        const planPrice = parsed.planPrice;
 
         return NextResponse.json({ config: { treasuryAddress, planPrice } });
     } catch (error: any) {

@@ -7,11 +7,35 @@ export interface Transaction {
     createdAt: string;
 }
 
+export interface MilestoneProgress {
+    slab: number;
+    reward: number;
+    currentCount: number;
+    targetCount: number;
+    isClaimed: boolean;
+}
+
+export interface AutoPoolDetail {
+    poolId: number;
+    name: string;
+    entryFee: string;
+    status: 'ACTIVE' | 'COMPLETED' | 'LOCKED';
+    level1Count: number;
+    level2Count: number;
+    level3Count: number;
+    totalEarned: string;
+    isCurrent: boolean;
+}
+
 export interface EarningsData {
     totalEarnings: string;
     directIncome: string;
     teamIncome: string;
     poolIncome: string;
+    milestoneIncome: string;
+    milestones: MilestoneProgress[];
+    levelEarnings: string[];
+    allPools: AutoPoolDetail[];
     autoPool: {
         name: string;
         filled: number;

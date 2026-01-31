@@ -4,13 +4,18 @@ import prisma from "@/lib/prisma";
 
 async function generateUniqueReferralCode(): Promise<string> {
   let attempts = 0;
-  while (attempts < 10) {
-    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+  while (attempts < 20) {
+    // Format: REF - 4 digits - 2 letters/digits
+    const part1 = Math.floor(1000 + Math.random() * 9000);
+    const part2 = Math.random().toString(36).substring(2, 4).toUpperCase();
+    const code = `REF-${part1}-${part2}`;
+
     const existing = await prisma.user.findUnique({ where: { referralCode: code } });
     if (!existing) return code;
     attempts++;
   }
-  throw new Error("Referral code generation failed");
+  // Fallback if needed
+  return "REF-" + Math.random().toString(36).substring(2, 10).toUpperCase();
 }
 
 export async function POST(req: Request) {

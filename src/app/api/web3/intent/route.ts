@@ -13,6 +13,12 @@ export async function POST(req: NextRequest) {
         const decodedToken = await adminAuth.verifyIdToken(token);
         const firebaseUid = decodedToken.uid;
 
+        const { amount, category = 'TOPUP' } = await req.json();
+
+        if (!amount || isNaN(Number(amount))) {
+            return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+        }
+
         const user = await prisma.user.findUnique({
             where: { firebaseUid },
         });
@@ -21,11 +27,11 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        // Create a Payment Intent for 600 USDT
+        // Create a Payment Intent for the specified amount
         const intent = await prisma.paymentIntent.create({
             data: {
                 userId: user.id,
-                amount: 600,
+                amount: Number(amount),
                 token: 'USDT',
                 network: 'BSC',
                 status: 'INITIATED',

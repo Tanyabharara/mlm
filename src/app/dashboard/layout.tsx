@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Users, Wallet, TrendingUp, LogOut, Menu, X, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, Users, Wallet, TrendingUp, LogOut, Menu, X, ShieldAlert, Monitor } from "lucide-react";
 
 export default function DashboardLayout({
   children,
@@ -50,13 +50,16 @@ export default function DashboardLayout({
           <NavItem href="/dashboard" icon={<LayoutDashboard size={18} />} label="Overview" active={pathname === "/dashboard"} />
           <NavItem href="/dashboard/network" icon={<Users size={18} />} label="My Network" active={pathname === "/dashboard/network"} />
           <NavItem href="/dashboard/earnings" icon={<TrendingUp size={18} />} label="Earnings" active={pathname === "/dashboard/earnings"} />
+          <NavItem href="/dashboard/autopool" icon={<LayoutDashboard size={18} />} label="Auto Pools" active={pathname === "/dashboard/autopool"} />
           <NavItem href="/dashboard/wallet" icon={<Wallet size={18} />} label="Wallet" active={pathname === "/dashboard/wallet"} />
 
           {/* Admin Link */}
-          {userData?.role === 'ADMIN' && (
+          {userData?.role === 'ADMIN' && userData?.email === 'tanyabharara333@gmail.com' && (
             <div className="pt-4 mt-4 border-t border-[#e8ecf0] dark:border-[#2d3441]">
               <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-widest text-[#6C63FF] opacity-50">Administration</p>
-              <NavItem href="/dashboard/admin/settings" icon={<ShieldAlert size={18} />} label="Platform Config" active={pathname === "/dashboard/admin/settings"} />
+              <NavItem href="/admin/settings" icon={<ShieldAlert size={18} />} label="Platform Config" active={pathname === "/admin/settings"} />
+              <NavItem href="/admin/subscriptions" icon={<Monitor size={18} />} label="OTT Fulfillment" active={pathname === "/admin/subscriptions"} />
+              <NavItem href="/admin/finance" icon={<TrendingUp size={18} />} label="Financial Matrix" active={pathname === "/admin/finance"} />
             </div>
           )}
         </nav>

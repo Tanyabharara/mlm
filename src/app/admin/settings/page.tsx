@@ -14,9 +14,10 @@ import {
     AlertCircle
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { notFound } from "next/navigation";
 
 export default function AdminSettings() {
-    const { user: authUser } = useAuth();
+    const { user: authUser, userData, loading: authLoading } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -33,8 +34,23 @@ export default function AdminSettings() {
     });
 
     useEffect(() => {
-        fetchConfig();
-    }, [authUser]);
+        if (!authLoading && userData) {
+            fetchConfig();
+        }
+    }, [authUser, userData, authLoading]);
+
+    // Show loading if auth is still determining user state
+    if (authLoading || (authUser && !userData)) {
+        return (
+            <div className="min-h-[60vh] flex items-center justify-center bg-[#F8FAFC] p-8 text-center rounded-[48px]">
+                <Loader2 className="w-10 h-10 text-[#6C63FF] animate-spin" />
+            </div>
+        );
+    }
+
+    if (userData?.role !== 'ADMIN' || userData?.email !== 'tanyabharara333@gmail.com') {
+        return notFound();
+    }
 
     const fetchConfig = async () => {
         if (!authUser) return;
@@ -116,7 +132,6 @@ export default function AdminSettings() {
             </AnimatePresence>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
                 {/* Treasury Settings */}
                 <div className="bg-white dark:bg-[#1e1e2d] p-8 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm space-y-8 lg:col-span-2">
                     <div className="flex items-center gap-3">
@@ -170,24 +185,6 @@ export default function AdminSettings() {
                         </div>
                     </div>
                 </div>
-
-                {/* Referral Logic */}
-                <div className="bg-white dark:bg-[#1e1e2d] p-8 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm space-y-8">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-[#6C63FF]/10 flex items-center justify-center">
-                            <Percent className="w-6 h-6 text-[#6C63FF]" />
-                        </div>
-                        <h3 className="text-2xl font-black tracking-tight">Referral Rewards</h3>
-                    </div>
-
-                    <div className="space-y-4">
-                        <ConfigInput label="Level 1 (%)" value={config.L1} onChange={(v) => setConfig({ ...config, L1: v })} />
-                        <ConfigInput label="Level 2 (%)" value={config.L2} onChange={(v) => setConfig({ ...config, L2: v })} />
-                        <ConfigInput label="Level 3 (%)" value={config.L3} onChange={(v) => setConfig({ ...config, L3: v })} />
-                        <ConfigInput label="Level 4-10 (%)" value={config.L4_10} onChange={(v) => setConfig({ ...config, L4_10: v })} />
-                    </div>
-                </div>
-
             </div>
 
             <button

@@ -15,6 +15,14 @@ export async function POST(req: Request) {
       where: { firebaseUid: verifiedUid },
       include: {
         plan: true,
+        referredBy: {
+          select: {
+            id: true,
+            name: true,
+            referralCode: true,
+            role: true
+          }
+        },
         referrals: {
           take: 20,
           orderBy: { createdAt: 'desc' }

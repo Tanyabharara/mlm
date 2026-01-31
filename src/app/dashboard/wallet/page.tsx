@@ -26,10 +26,12 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { EarningsData } from "@/types/earnings";
+import WalletDepositModal from "@/components/WalletDepositModal";
 
 export default function WalletPage() {
     const { user: authUser } = useAuth();
     const [filter, setFilter] = useState("all");
+    const [isDepositOpen, setIsDepositOpen] = useState(false);
 
     // Real Earnings Data Query
     const { data: earnings, isLoading: earningsLoading } = useQuery<EarningsData>({
@@ -77,7 +79,10 @@ export default function WalletPage() {
                     <p className="text-slate-400 font-medium">Manage your USDT settlements and pool progress 💎</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button className="px-6 py-3 bg-[#6C63FF] text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-[#6C63FF]/20 flex items-center gap-2">
+                    <button
+                        onClick={() => setIsDepositOpen(true)}
+                        className="px-6 py-3 bg-[#6C63FF] text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-[#6C63FF]/20 flex items-center gap-2"
+                    >
                         <PlusCircle size={14} /> Deposit
                     </button>
                     <button className="px-6 py-3 bg-white dark:bg-slate-900 border border-gray-100 dark:border-white/5 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2">
@@ -202,6 +207,12 @@ export default function WalletPage() {
                     )}
                 </div>
             </div>
+
+            <WalletDepositModal
+                isOpen={isDepositOpen}
+                onClose={() => setIsDepositOpen(false)}
+                onSuccess={() => setIsDepositOpen(false)}
+            />
         </div>
     );
 }

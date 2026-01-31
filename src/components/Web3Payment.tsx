@@ -11,8 +11,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const USDT_ADDRESS = '0x55d398326f99059fF775485246999027B3197955'; // Mainnet USDT (BSC)
 
-export default function Web3Payment({ onIdToken }: { onIdToken: () => Promise<string> }) {
+export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdToken: () => Promise<string>, amount?: string }) {
+    const [mounted, setMounted] = useState(false);
     const { isConnected, address } = useAccount();
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
@@ -51,8 +56,10 @@ export default function Web3Payment({ onIdToken }: { onIdToken: () => Promise<st
             const intentRes = await fetch('/api/web3/intent', {
                 method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${idToken}`
-                }
+                },
+                body: JSON.stringify({ amount: customAmount || adminConfig.planPrice || '600' })
             });
 
             const { intent, error: intentError } = await intentRes.json();
@@ -61,7 +68,7 @@ export default function Web3Payment({ onIdToken }: { onIdToken: () => Promise<st
             setPaymentIntentId(intent.id);
 
             // 2. Execute Wallet Transaction
-            const amount = parseUnits(adminConfig.planPrice || '600', 18);
+            const amount = parseUnits(customAmount || adminConfig.planPrice || '600', 18);
 
             writeContract({
                 address: USDT_ADDRESS,
@@ -105,6 +112,7 @@ export default function Web3Payment({ onIdToken }: { onIdToken: () => Promise<st
         }
     }, [hash, paymentIntentId]);
 
+    if (!mounted) return null;
     if (!isConnected) return null;
     if (!adminConfig) return <div className="p-4 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-[#6C63FF]" /></div>;
 
@@ -147,7 +155,7 @@ export default function Web3Payment({ onIdToken }: { onIdToken: () => Promise<st
                 ) : (
                     <>
                         <Zap className="w-5 h-5" />
-                        Activate Plan ({adminConfig.planPrice} USDT)
+                        {customAmount ? `Deposit ${customAmount} USDT` : `Activate Plan (${adminConfig.planPrice} USDT)`}
                         <ArrowRight className="w-4 h-4" />
                     </>
                 )}

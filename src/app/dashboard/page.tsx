@@ -1,30 +1,38 @@
 "use client";
-import React from "react";
+
+import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import {
     Wallet,
     Users,
-    Package,
-    Code,
     Activity,
     Loader2,
-    TrendingUp,
-    ArrowUpRight,
     ShieldCheck,
     Zap,
     LayoutDashboard,
     ArrowRight,
-    Sparkles
+    Sparkles,
+    Globe,
+    CheckCircle2,
+    Lock,
+    Trophy,
+    ExternalLink,
+    PlusCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EarningsData } from "@/types/earnings";
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-import Web3Payment from "@/components/Web3Payment";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
+    const [mounted, setMounted] = React.useState(false);
     const { user: authUser } = useAuth();
+    const router = useRouter();
+
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
 
     // User Data Query
     const { data: userDataResponse, isLoading: userLoading } = useQuery({
@@ -41,7 +49,7 @@ export default function DashboardPage() {
             });
             return res.json();
         },
-        enabled: !!authUser?.uid,
+        enabled: !!authUser?.uid && mounted,
     });
 
     // Earnings Data Query
@@ -56,11 +64,35 @@ export default function DashboardPage() {
             });
             return response.json();
         },
-        enabled: !!authUser?.uid,
+        enabled: !!authUser?.uid && mounted,
     });
 
     const isLoading = userLoading || earningsLoading;
     const userData = userDataResponse?.user;
+
+    // OTT Data Query
+    const { data: ottData } = useQuery({
+        queryKey: ["user", "ott", authUser?.uid],
+        queryFn: async () => {
+            const token = await authUser!.getIdToken();
+            const res = await fetch("/api/user/ott", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return res.json();
+        },
+        enabled: !!authUser?.uid && mounted,
+    });
+
+    const activeOtt = ottData?.subscriptions?.find((s: any) => s.status === "ACTIVE");
+
+    // Redirect to activation if no plan
+    React.useEffect(() => {
+        if (!isLoading && userData && !userData.plan) {
+            router.push("/dashboard/activate");
+        }
+    }, [userData, isLoading, router]);
+
+    if (!mounted) return null;
 
     if (isLoading) {
         return (
@@ -71,180 +103,209 @@ export default function DashboardPage() {
         );
     }
 
+    if (!userData?.plan) return null; // Let the redirect handle it
+
     return (
-        <div className="max-w-7xl mx-auto space-y-10 pb-20 px-4 md:px-0">
-            {/* 1. Welcome Header Section */}
+        <div className="max-w-7xl mx-auto space-y-10 pb-20 px-4 md:px-0 font-sans">
+            {/* 1. Header Area */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-1">
-                    <h1 className="text-4xl md:text-5xl font-black tracking-tighter">
-                        Welcome back, <span className="text-[#6C63FF]">{userData?.name?.split(' ')[0] || "User"}</span>! ✨
+                    <h1 className="text-xl font-bold text-slate-900 dark:text-white font-outfit uppercase tracking-tight flex items-center gap-2">
+                        Partner Overview
                     </h1>
-                    <div className="flex items-center gap-2 text-slate-400 font-medium">
-                        <span>Your network is active and growing.</span>
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#4CAF50] animate-pulse" />
-                    </div>
                 </div>
-                <div className="flex items-center gap-3">
-                    <ConnectButton accountStatus="avatar" chainStatus="icon" showBalance={false} />
-                    <div className="hidden sm:flex items-center gap-3 px-4 py-2 bg-white dark:bg-slate-900 border border-gray-100 dark:border-white/5 rounded-2xl shadow-sm">
-                        <ShieldCheck className="w-4 h-4 text-[#6C63FF]" />
-                        <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest">Auth Valid</span>
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded-full text-emerald-600 dark:text-emerald-400">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-widest leading-none">Account Active</span>
                     </div>
                 </div>
             </div>
 
-            {/* 2. Highlight Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <OverviewCard
-                    title="Wallet Balance"
-                    value={`$${userData?.walletBalance || 0}`}
-                    desc="Ready for withdrawal"
-                    icon={<Wallet />}
-                    color="text-emerald-500"
-                    bg="bg-emerald-50"
-                    darkBg="dark:bg-emerald-500/10"
-                />
-                <OverviewCard
-                    title="Total Income"
-                    value={`$${earningsData?.totalEarnings || 0}`}
-                    desc="Lifetime earnings"
-                    icon={<TrendingUp />}
-                    color="text-[#6C63FF]"
-                    bg="bg-blue-50"
-                    darkBg="dark:bg-[#6C63FF]/10"
-                />
-                <OverviewCard
-                    title="Team Nodes"
-                    value={userData?.referrals?.length || 0}
-                    desc="Personal referrals"
-                    icon={<Users />}
-                    color="text-purple-500"
-                    bg="bg-purple-50"
-                    darkBg="dark:bg-purple-500/10"
-                />
-                <OverviewCard
-                    title="Network Plan"
-                    value={userData?.plan?.name || "Inactive"}
-                    desc={userData?.plan ? "Level 1 Active" : "Activation Required"}
-                    icon={<Package />}
-                    color="text-amber-500"
-                    bg="bg-amber-50"
-                    darkBg="dark:bg-amber-500/10"
-                />
+            {/* 2. Welcome Banner */}
+            <div className="space-y-4">
+                <div className="space-y-1">
+                    <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-slate-900 dark:text-white">
+                        Welcome back, <span className="text-[#6C63FF]">{userData?.name || "User"}</span>! ✨
+                    </h2>
+                    <p className="text-blue-500 font-bold text-sm">
+                        Stream, Share & Earn: Your Journey to Financial Freedom Starts Here.
+                    </p>
+                </div>
+                <p className="text-slate-400 font-medium text-xs max-w-2xl leading-relaxed">
+                    Your premium subscription is active. Here's your portfolio performance.
+                </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-
-                {/* 3. Main Dashboard Interaction Area */}
-                <div className="lg:col-span-8 space-y-8">
-
-                    {/* Activation/Referral Callout */}
-                    {!userData?.plan ? (
-                        <div className="bg-[#0F172A] rounded-[48px] p-10 md:p-12 text-white relative overflow-hidden shadow-2xl">
-                            <div className="absolute top-0 right-0 w-80 h-80 bg-[#6C63FF]/20 rounded-full blur-[100px] -mr-40 -mt-40" />
-                            <div className="relative z-10 space-y-8">
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                    <div className="space-y-3">
-                                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#6C63FF]/20 rounded-full border border-[#6C63FF]/20 text-[#6C63FF] text-[9px] font-black uppercase tracking-widest">
-                                            Action Required
-                                        </div>
-                                        <h2 className="text-3xl font-black">Plan Activation Required</h2>
-                                        <p className="text-slate-400 text-sm font-medium max-w-sm leading-relaxed">
-                                            To start earning referral income and join the global FIFO matrix, you must activate your network plan.
-                                        </p>
-                                    </div>
-                                    <div className="md:w-64 flex-shrink-0">
-                                        <Web3Payment onIdToken={() => authUser!.getIdToken()} />
-                                    </div>
-                                </div>
-                            </div>
+            {/* 3. Main Bento Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Card 1: Wallet Balance */}
+                <div className="bg-white dark:bg-slate-900 p-10 rounded-[48px] border border-gray-100 dark:border-white/5 shadow-premium flex flex-col justify-between space-y-12">
+                    <div className="flex justify-between items-start">
+                        <div className="w-14 h-14 rounded-2xl bg-[#6C63FF]/10 flex items-center justify-center text-[#6C63FF]">
+                            <Wallet size={28} />
                         </div>
-                    ) : (
-                        <div className="bg-[#6C63FF] rounded-[48px] p-10 md:p-12 text-white relative overflow-hidden shadow-2xl">
-                            <div className="absolute top-1/2 right-1/2 translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/10 rounded-full blur-[100px]" />
-                            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-10">
-                                <div className="space-y-4">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Your Exclusive Invite Code</p>
-                                    <h2 className="text-6xl font-black tracking-tighter">{userData?.referralCode || "------"}</h2>
-                                    <button className="flex items-center gap-2 text-xs font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full transition-all">
-                                        Copy Link <ArrowRight size={14} />
-                                    </button>
-                                </div>
-                                <div className="hidden md:block">
-                                    <Sparkles size={120} className="opacity-10 animate-pulse" />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Performance Trends Section */}
-                    <div className="bg-white dark:bg-slate-900 rounded-[48px] p-10 border border-gray-100 dark:border-white/5 shadow-xl space-y-8">
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-1">
-                                <h3 className="text-xl font-black tracking-tighter">Live Network Pulse</h3>
-                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Performance of your downline hubs</p>
-                            </div>
-                            <Link href="/dashboard/network" className="text-xs font-black text-[#6C63FF] border-b-2 border-transparent hover:border-[#6C63FF] transition-all pb-1">Enter Full View</Link>
-                        </div>
-
-                        <div className="h-40 flex items-end gap-3 px-2">
-                            {[50, 70, 40, 90, 60, 30, 80].map((h, i) => (
-                                <motion.div
-                                    key={i}
-                                    initial={{ height: 0 }}
-                                    animate={{ height: `${h}%` }}
-                                    className="flex-1 bg-slate-50 dark:bg-white/5 rounded-t-2xl group relative"
-                                >
-                                    <div className="absolute inset-0 bg-[#6C63FF] opacity-0 group-hover:opacity-100 transition-opacity rounded-t-2xl" />
-                                </motion.div>
-                            ))}
-                        </div>
+                        <button className="px-6 py-2.5 bg-[#6C63FF]/10 hover:bg-[#6C63FF]/20 text-[#6C63FF] rounded-full text-[10px] font-black uppercase tracking-widest transition-all">
+                            Withdraw Funds
+                        </button>
                     </div>
-
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Withdrawable Balance</p>
+                        <h3 className="text-5xl font-black tracking-tighter text-slate-900 dark:text-white">
+                            ${userData?.walletBalance || "0.00"}
+                        </h3>
+                    </div>
                 </div>
 
-                {/* 4. Side Sidebar - Quick Stats / Recommendations */}
-                <div className="lg:col-span-4 space-y-8">
-
-                    <div className="bg-white dark:bg-slate-900 rounded-[48px] p-10 border border-gray-100 dark:border-white/5 shadow-xl space-y-8">
-                        <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500">
-                            <Users size={24} />
+                {/* Card 2: OTT Access */}
+                <div className="bg-white dark:bg-slate-900 p-10 rounded-[48px] border border-gray-100 dark:border-white/5 shadow-premium flex flex-col justify-between space-y-6">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center text-purple-500">
+                            <Monitor size={24} />
                         </div>
-                        <div className="space-y-2">
-                            <h3 className="text-xl font-black tracking-tighter">Global Matrix</h3>
-                            <p className="text-sm text-slate-400 font-medium leading-relaxed">
-                                You are currently <span className="text-[#6C63FF] font-black">{Math.round(((earningsData?.autoPool?.filled || 0) / (earningsData?.autoPool?.total || 27)) * 100)}%</span> complete in the current global FIFO cycle.
+                        <div className="space-y-1">
+                            <h4 className="text-sm font-black font-outfit text-slate-900 dark:text-white uppercase tracking-wider">
+                                {activeOtt ? activeOtt.platform : "OTT Access"}
+                            </h4>
+                            <p className="text-[10px] font-bold text-[#6C63FF] uppercase tracking-widest leading-none">
+                                {activeOtt ? "Active • Premium" : "Pending • Lifetime"}
                             </p>
                         </div>
-                        <Link href="/dashboard/network" className="w-full py-4 bg-slate-50 dark:bg-white/5 rounded-2xl flex items-center justify-center gap-3 text-xs font-black uppercase tracking-widest hover:bg-slate-100 transition-all">
-                            Explore Tree <ArrowRight size={14} />
-                        </Link>
                     </div>
 
-                    <div className="bg-white dark:bg-slate-900 rounded-[48px] p-10 border border-gray-100 dark:border-white/5 shadow-xl space-y-8">
-                        <div className="w-12 h-12 rounded-2xl bg-[#6C63FF]/10 flex items-center justify-center text-[#6C63FF]">
-                            <LayoutDashboard size={24} />
+                    <div className="space-y-4">
+                        {activeOtt ? (
+                            <div className="p-5 bg-slate-50 dark:bg-white/5 rounded-3xl border border-slate-100 dark:border-white/10 space-y-2">
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    <span>User</span>
+                                    <span className="text-slate-900 dark:text-white lowercase">{activeOtt.username || "n/a"}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    <span>Key</span>
+                                    <span className="text-slate-900 dark:text-white font-mono">{activeOtt.password ? "••••••••" : "n/a"}</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3">
+                                {[1, 2, 3, 4].map(i => (
+                                    <div key={i} className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-300">
+                                        {i === 1 ? <Zap size={18} className="text-amber-500" /> : <Lock size={16} />}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="pt-4 flex items-center justify-between border-t border-slate-50 dark:border-white/5">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                            {activeOtt ? "Access Secured" : "Awaiting Approval"}
+                        </p>
+                        <button
+                            onClick={() => activeOtt && alert(`Access Link: ${activeOtt.link || 'Please use login details.'}`)}
+                            className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest hover:underline"
+                        >
+                            {activeOtt ? "View Portal" : "Check Status"}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Card 3: Incentive Targets */}
+                <div className="bg-white dark:bg-slate-900 p-10 rounded-[48px] border border-gray-100 dark:border-white/5 shadow-premium space-y-8">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500">
+                            <Trophy size={24} />
                         </div>
-                        <div className="space-y-4">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recent Activity</p>
-                            <div className="space-y-4">
-                                {(!earningsData?.recentTransactions || earningsData.recentTransactions.length === 0) ? (
-                                    <p className="text-xs font-bold text-slate-300 italic">Listening for node activity...</p>
-                                ) : (
-                                    earningsData.recentTransactions.slice(0, 3).map((tx: any) => (
-                                        <div key={tx.id} className="flex items-center gap-4">
-                                            <div className="w-2 h-2 rounded-full bg-[#4CAF50]" />
-                                            <p className="text-xs font-bold text-slate-600 dark:text-slate-300 truncate flex-1">{tx.description}</p>
-                                        </div>
-                                    ))
-                                )}
+                        <h4 className="text-sm font-black font-outfit text-slate-900 dark:text-white uppercase tracking-wider">Incentive Targets</h4>
+                    </div>
+
+                    <div className="flex items-end justify-between gap-10">
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Direct Referrals</p>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-4xl font-black font-outfit">{userData?.referrals?.length || 0}</span>
+                                <span className="text-slate-300 text-lg font-bold">/50</span>
+                            </div>
+                        </div>
+                        <div className="flex-1 space-y-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600">
+                                    <Sparkles size={16} />
+                                </div>
+                                <div className="space-y-0.5">
+                                    <p className="text-[9px] font-black text-slate-900 dark:text-white uppercase tracking-widest">Next Milestone: Silver Leader</p>
+                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Reward: $100 One-time Bonus + 2% Team Passive</p>
+                                </div>
+                            </div>
+                            <div className="w-full h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-amber-400 rounded-full"
+                                    style={{ width: `${Math.min(((userData?.referrals?.length || 0) / 50) * 100, 100)}%` }}
+                                />
                             </div>
                         </div>
                     </div>
 
+                    <div className="flex items-center justify-between border-t border-slate-50 dark:border-white/5 pt-6">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">Share more to earn more</p>
+                        <Link href="#" className="flex items-center gap-2 text-[10px] font-black text-[#6C63FF] uppercase tracking-widest hover:underline">
+                            Learn More <ArrowRight size={12} />
+                        </Link>
+                    </div>
                 </div>
 
+                {/* Card 4: Auto Pool Rules */}
+                <div className="bg-white dark:bg-slate-900 p-10 rounded-[48px] border border-gray-100 dark:border-white/5 shadow-premium flex flex-col justify-between space-y-8">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                <Activity size={24} />
+                            </div>
+                            <h4 className="text-sm font-black font-outfit text-slate-900 dark:text-white uppercase tracking-wider">Auto Pool Rules</h4>
+                        </div>
+                        <div className="px-2 py-1 bg-slate-100 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10 flex items-center gap-1.5 grayscale opacity-50">
+                            <Zap size={10} fill="currentColor" />
+                            <span className="text-[8px] font-black uppercase tracking-widest leading-none">System Managed</span>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="inline-block px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded-full text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border border-emerald-500/10">
+                            Bonus: Earn 10%, 20%, 30% Level Income based on pool activity.
+                        </div>
+                        <div className="space-y-4 pt-2">
+                            <RuleStep number="01" text="Pool rewards distributed based on global platform growth sequence." />
+                            <RuleStep number="02" text="Matrix structure automatically syncs reaching defined volume thresholds." />
+                            <RuleStep number="03" text="System maintains strict privacy of pool hierarchy to ensure fair distribution." />
+                        </div>
+                    </div>
+
+                    <Link href="/dashboard/autopool/rules" className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest text-right hover:underline">
+                        Full Auto Pool Rules 1.2
+                    </Link>
+                </div>
             </div>
+
+            {/* Float Action - Invite Link */}
+            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-50">
+                <div className="bg-slate-900 text-white rounded-[40px] p-6 shadow-2xl flex items-center justify-between gap-6 border border-white/10 backdrop-blur-md bg-slate-900/90">
+                    <div className="space-y-0.5">
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-50">Your Invitation Code</p>
+                        <p className="text-xl font-black font-outfit tracking-widest text-[#6C63FF]">{userData?.referralCode || "------"}</p>
+                    </div>
+                    <button className="h-12 px-8 bg-[#6C63FF] hover:bg-[#5B52E5] text-white rounded-full text-xs font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2">
+                        Get Invite Link <ArrowRight size={14} />
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function RuleStep({ number, text }: { number: string; text: string }) {
+    return (
+        <div className="flex items-start gap-4">
+            <span className="text-[#6C63FF] text-[10px] font-black font-outfit pt-0.5">{number}</span>
+            <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 leading-relaxed uppercase tracking-tighter">{text}</p>
         </div>
     );
 }

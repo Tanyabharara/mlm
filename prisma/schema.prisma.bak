@@ -21,29 +21,12 @@ model User {
   planId           Int?
   plan             Plan?    @relation(fields: [planId], references: [id])
   walletBalance    Decimal  @default(0.0)
-  isBlocked        Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
-  milestones       Milestone[]
   purchases        Purchase[]
   transactions     Transaction[]
   withdrawalRequests WithdrawalRequest[]
   poolEntries      AutoPoolEntry[]
-  paymentIntents   PaymentIntent[]
-  ottSubscriptions OttSubscription[]
-}
-
-model OttSubscription {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id])
-  platform    String   // e.g., Netflix, Prime, Disney+
-  username    String?
-  password    String?
-  link        String?
-  status      String   @default("PENDING") // PENDING, ACTIVE, EXPIRED
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }
 
 model Plan {
@@ -105,7 +88,6 @@ model Transaction {
 model PaymentIntent {
   id              String   @id @default(cuid())
   userId          Int
-  user            User     @relation(fields: [userId], references: [id])
   amount          Decimal  // e.g. 600
   token           String   @default("USDT")
   network         String   @default("BSC")
@@ -124,17 +106,6 @@ model WithdrawalRequest {
   status      String   @default("PENDING")
   createdAt   DateTime @default(now())
   processedAt DateTime?
-}
-
-model Milestone {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id])
-  slab        Int      // 10, 20, 50
-  amount      Decimal
-  createdAt   DateTime @default(now())
-  
-  @@unique([userId, slab])
 }
 
 model AppConfig {

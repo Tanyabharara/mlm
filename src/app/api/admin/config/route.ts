@@ -1,24 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { adminAuth } from '@/lib/firebase-db';
+import { verifyAdminRequest } from '@/lib/admin-auth';
 
 export async function GET(req: NextRequest) {
     try {
-        const authHeader = req.headers.get('Authorization');
-        if (!authHeader?.startsWith('Bearer ')) {
+        const admin = await verifyAdminRequest(req);
+        if (!admin) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const token = authHeader.split('Bearer ')[1];
-        const decodedToken = await adminAuth.verifyIdToken(token);
-        const firebaseUid = decodedToken.uid;
-
-        const user = await prisma.user.findUnique({
-            where: { firebaseUid },
-        });
-
-        if (user?.role !== 'ADMIN') {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         const config = await prisma.appConfig.findUnique({
@@ -33,20 +21,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        const authHeader = req.headers.get('Authorization');
-        if (!authHeader?.startsWith('Bearer ')) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const token = authHeader.split('Bearer ')[1];
-        const decodedToken = await adminAuth.verifyIdToken(token);
-        const firebaseUid = decodedToken.uid;
-
-        const user = await prisma.user.findUnique({
-            where: { firebaseUid },
-        });
-
-        if (user?.role !== 'ADMIN') {
+        const admin = await verifyAdminRequest(req);
+        if (!admin) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -68,6 +44,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
+        console.error("[API Admin Config] Error:", error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

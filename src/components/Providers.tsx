@@ -19,6 +19,7 @@ function ReferralCapture() {
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  console.log("Providers mounting, config:", !!config);
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
