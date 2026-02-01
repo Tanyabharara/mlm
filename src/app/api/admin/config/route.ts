@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminRequest } from "@/lib/admin-auth";
-import { getAppConfig, setAppConfig, updatePlan } from "@/lib/firebase-db";
+import { getAppConfig, setAppConfig, updatePlan, getPlans } from "@/lib/firebase-db";
 
 export async function GET(req: NextRequest) {
   try {
