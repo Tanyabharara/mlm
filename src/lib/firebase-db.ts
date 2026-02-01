@@ -396,6 +396,16 @@ export async function createPlan(data: any) {
   return { id: docRef.id, ...data };
 }
 
+export async function updatePlan(id: string, data: Partial<{ name: string; price: number; levelCount: number; levelPercentages: string }>) {
+  await db.collection("plans").doc(id).update(data as any);
+  invalidateCache("plans:");
+}
+
+export async function setPlan(id: string, data: { name: string; price: number; levelCount: number; levelPercentages: string }) {
+  await db.collection("plans").doc(id).set({ id, ...data }, { merge: true });
+  invalidateCache("plans:");
+}
+
 export async function createPurchase(data: any) {
   const now = new Date();
   const docRef = await db.collection("purchases").add({
@@ -425,15 +435,17 @@ export async function getTransactions(userId: string, limit: number = 10) {
     const snapshot = await db
       .collection("transactions")
       .where("userId", "==", userId)
-      .orderBy("createdAt", "desc")
-      .limit(limit)
+      .limit(500)
       .get();
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const docs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as any[];
+    docs.sort((a, b) => {
+      const ta = a.createdAt?.toMillis?.() ?? new Date(a.createdAt).getTime();
+      const tb = b.createdAt?.toMillis?.() ?? new Date(b.createdAt).getTime();
+      return tb - ta;
+    });
+    return docs.slice(0, limit);
   } catch (error) {
-    console.error(
-      "Error fetching transactions. Ensure composite index on (userId ASC, createdAt DESC) exists in Firestore.",
-      error
-    );
+    console.error("Error fetching transactions:", error);
     return [];
   }
 }
@@ -467,6 +479,21 @@ export async function getReferrals(userId: string, depth: number = 3) {
   }
 }
 
+export async function getDirectReferrals(userId: string, limit: number = 50): Promise<any[]> {
+  const snapshot = await db
+    .collection("users")
+    .where("referredById", "==", userId)
+    .limit(500)
+    .get();
+  const docs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as any[];
+  docs.sort((a, b) => {
+    const ta = a.createdAt?.toMillis?.() ?? new Date(a.createdAt).getTime();
+    const tb = b.createdAt?.toMillis?.() ?? new Date(b.createdAt).getTime();
+    return tb - ta;
+  });
+  return docs.slice(0, limit);
+}
+
 export async function getUplineChain(userId: string): Promise<string[]> {
   const chain: string[] = [];
   let currentId: string | null = userId;
@@ -481,5 +508,262 @@ export async function getUplineChain(userId: string): Promise<string[]> {
   }
 
   return chain;
+}
+
+export async function getAppConfig(key: string): Promise<{ key: string; value: string } | null> {
+  const cacheKey = getCacheKey("appConfig", key);
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  const doc = await db.collection("appConfig").doc(key).get();
+  if (!doc.exists) return null;
+  const data = { key: doc.id, value: (doc.data() as any)?.value ?? "" };
+  setCache(cacheKey, data);
+  return data;
+}
+
+export async function setAppConfig(key: string, value: string): Promise<void> {
+  await db.collection("appConfig").doc(key).set({ key, value }, { merge: true });
+  invalidateCache("appConfig:");
+}
+
+export async function getAutoPools(): Promise<any[]> {
+  const snapshot = await db.collection("autoPools").get();
+  const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  list.sort((a, b) => {
+    const na = Number(a.id);
+    const nb = Number(b.id);
+    if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+    return String(a.id).localeCompare(String(b.id));
+  });
+  return list;
+}
+
+export async function getAutoPool(id: string): Promise<any | null> {
+  const doc = await db.collection("autoPools").doc(id).get();
+  if (!doc.exists) return null;
+  return { id: doc.id, ...doc.data() };
+}
+
+export async function setAutoPool(id: string, data: { name: string; entryFee: number; matrixWidth?: number; matrixDepth?: number; reward?: number }) {
+  await db.collection("autoPools").doc(id).set({ id, ...data }, { merge: true });
+}
+
+export async function getAutoPoolEntriesByPool(poolId: string): Promise<any[]> {
+  const snapshot = await db
+    .collection("autoPoolEntries")
+    .where("poolId", "==", poolId)
+    .get();
+  const docs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as any[];
+  docs.sort((a, b) => {
+    const ta = a.createdAt?.toMillis?.() ?? new Date(a.createdAt).getTime();
+    const tb = b.createdAt?.toMillis?.() ?? new Date(b.createdAt).getTime();
+    return ta - tb;
+  });
+  return docs;
+}
+
+export async function countAutoPoolEntryChildren(entryId: string): Promise<number> {
+  const snapshot = await db.collection("autoPoolEntries").where("parentId", "==", entryId).get();
+  return snapshot.size;
+}
+
+export async function createAutoPoolEntry(data: {
+  userId: string;
+  poolId: string;
+  parentId: string | null;
+  level: number;
+}): Promise<any> {
+  const now = new Date();
+  const docRef = await db.collection("autoPoolEntries").add({
+    ...data,
+    isCompleted: false,
+    completedAt: null,
+    createdAt: now,
+  });
+  return { id: docRef.id, ...data, isCompleted: false, completedAt: null, createdAt: now };
+}
+
+export async function getAutoPoolEntry(id: string): Promise<any | null> {
+  const doc = await db.collection("autoPoolEntries").doc(id).get();
+  if (!doc.exists) return null;
+  return { id: doc.id, ...doc.data() };
+}
+
+export async function getAutoPoolEntryByUserAndPool(userId: string, poolId: string): Promise<any | null> {
+  const snapshot = await db
+    .collection("autoPoolEntries")
+    .where("userId", "==", userId)
+    .where("poolId", "==", poolId)
+    .limit(1)
+    .get();
+  if (snapshot.empty) return null;
+  const d = snapshot.docs[0];
+  return { id: d.id, ...d.data() };
+}
+
+export async function getAutoPoolEntriesByUser(userId: string): Promise<any[]> {
+  const snapshot = await db
+    .collection("autoPoolEntries")
+    .where("userId", "==", userId)
+    .get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function getAutoPoolEntryChildren(entryId: string): Promise<any[]> {
+  const snapshot = await db
+    .collection("autoPoolEntries")
+    .where("parentId", "==", entryId)
+    .get();
+  const docs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as any[];
+  docs.sort((a, b) => {
+    const ta = a.createdAt?.toMillis?.() ?? new Date(a.createdAt).getTime();
+    const tb = b.createdAt?.toMillis?.() ?? new Date(b.createdAt).getTime();
+    return ta - tb;
+  });
+  return docs;
+}
+
+export async function countAutoPoolEntriesByPool(poolId: string): Promise<number> {
+  const snapshot = await db.collection("autoPoolEntries").where("poolId", "==", poolId).get();
+  return snapshot.size;
+}
+
+export async function updateAutoPoolEntry(id: string, data: Partial<{ isCompleted: boolean; completedAt: Date | null }>): Promise<void> {
+  await db.collection("autoPoolEntries").doc(id).update(data as any);
+}
+
+export async function getPaymentIntent(id: string): Promise<any | null> {
+  const doc = await db.collection("paymentIntents").doc(id).get();
+  if (!doc.exists) return null;
+  return { id: doc.id, ...doc.data() };
+}
+
+export async function createPaymentIntent(data: {
+  userId: string;
+  amount: number;
+  token?: string;
+  network?: string;
+  status?: string;
+}): Promise<any> {
+  const now = new Date();
+  const payload = {
+    ...data,
+    token: data.token ?? "USDT",
+    network: data.network ?? "BSC",
+    status: data.status ?? "INITIATED",
+    txHash: null,
+    confirmations: 0,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const ref = await db.collection("paymentIntents").add(payload);
+  return { id: ref.id, ...payload };
+}
+
+export async function createPaymentIntentWithId(id: string, data: {
+  userId: string;
+  amount: number;
+  token?: string;
+  network?: string;
+  status?: string;
+}): Promise<any> {
+  const now = new Date();
+  const payload = {
+    ...data,
+    token: data.token ?? "USDT",
+    network: data.network ?? "BSC",
+    status: data.status ?? "INITIATED",
+    txHash: null,
+    confirmations: 0,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await db.collection("paymentIntents").doc(id).set(payload);
+  return { id, ...payload };
+}
+
+export async function updatePaymentIntent(id: string, data: Partial<{ status: string; txHash: string | null; confirmations: number }>): Promise<void> {
+  await db.collection("paymentIntents").doc(id).update({ ...data, updatedAt: new Date() } as any);
+}
+
+export async function getMilestonesByUser(userId: string): Promise<any[]> {
+  const snapshot = await db.collection("milestones").where("userId", "==", userId).get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function createMilestone(data: { userId: string; slab: number; amount: number }): Promise<any> {
+  const now = new Date();
+  const docRef = await db.collection("milestones").add({ ...data, createdAt: now });
+  return { id: docRef.id, ...data, createdAt: now };
+}
+
+export async function getOttSubscriptionsByUser(userId: string): Promise<any[]> {
+  const snapshot = await db.collection("ottSubscriptions").where("userId", "==", userId).get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function createOttSubscription(data: {
+  userId: string;
+  platform: string;
+  username?: string;
+  password?: string;
+  link?: string;
+  status?: string;
+}): Promise<any> {
+  const now = new Date();
+  const docRef = await db.collection("ottSubscriptions").add({
+    ...data,
+    status: data.status ?? "PENDING",
+    createdAt: now,
+    updatedAt: now,
+  });
+  return { id: docRef.id, ...data, status: data.status ?? "PENDING", createdAt: now, updatedAt: now };
+}
+
+export async function getFirstAdminUser(): Promise<any | null> {
+  const snapshot = await db.collection("users").where("role", "==", "ADMIN").limit(1).get();
+  if (snapshot.empty) return null;
+  const d = snapshot.docs[0];
+  return { id: d.id, ...d.data() };
+}
+
+export async function countUsersByReferredById(referredById: string): Promise<number> {
+  const snapshot = await db.collection("users").where("referredById", "==", referredById).get();
+  return snapshot.size;
+}
+
+export async function getUsersByReferredById(referredById: string): Promise<any[]> {
+  const snapshot = await db.collection("users").where("referredById", "==", referredById).get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function getRecentPaymentIntents(limit: number = 20): Promise<any[]> {
+  const snapshot = await db
+    .collection("paymentIntents")
+    .orderBy("createdAt", "desc")
+    .limit(limit)
+    .get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function getUsersWithPlan(): Promise<any[]> {
+  const snapshot = await db.collection("users").where("planId", ">", "").get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function getAllUsers(): Promise<any[]> {
+  const snapshot = await db.collection("users").get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function milestoneExists(userId: string, slab: number): Promise<boolean> {
+  const snapshot = await db
+    .collection("milestones")
+    .where("userId", "==", userId)
+    .where("slab", "==", slab)
+    .limit(1)
+    .get();
+  return !snapshot.empty;
 }
 

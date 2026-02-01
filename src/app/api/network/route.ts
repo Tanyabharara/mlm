@@ -1,48 +1,49 @@
 import { verifyAuthToken } from "@/lib/auth-server";
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import {
+  getUserByFirebaseUid,
+  countUsersByReferredById,
+  getUserById,
+  getPlan,
+} from "@/lib/firebase-db";
 
-async function getUserStats(userId: number) {
+async function getUserStats(userId: string) {
   const [referralCount, info] = await Promise.all([
-    prisma.user.count({ where: { referredById: userId } }),
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { plan: true, createdAt: true, walletBalance: true }
-    })
+    countUsersByReferredById(userId),
+    getUserById(userId),
   ]);
-
+  const plan = info?.planId ? await getPlan(info.planId) : null;
   return {
     referralCount,
-    planName: info?.plan?.name || "No Plan",
-    balance: info?.walletBalance?.toString() || "0.00",
-    joinedAt: info?.createdAt
+    planName: plan?.name || "No Plan",
+    balance: String((info as any)?.walletBalance ?? 0),
+    joinedAt: (info as any)?.createdAt,
   };
 }
 
-async function getReferralsRecursive(userId: number, currentLevel: number, maxLevel: number): Promise<any[]> {
+async function getReferralsRecursive(userId: string, currentLevel: number, maxLevel: number): Promise<any[]> {
   if (currentLevel > maxLevel) return [];
 
-  const referrals = await prisma.user.findMany({
-    where: { referredById: userId }
-  });
-
+  const { getUsersByReferredById } = await import("@/lib/firebase-db");
+  const referrals = await getUsersByReferredById(userId);
   const results = [];
+
   for (const ref of referrals) {
     const [children, stats] = await Promise.all([
       getReferralsRecursive(ref.id, currentLevel + 1, maxLevel),
-      getUserStats(ref.id)
+      getUserStats(ref.id),
     ]);
 
     results.push({
-      id: ref.id.toString(),
+      id: ref.id,
       data: {
         label: ref.name || "User",
         level: currentLevel,
         isRoot: false,
         referralCode: ref.referralCode,
-        ...stats
+        ...stats,
       },
-      referrals: children
+      referrals: children,
     });
   }
   return results;
@@ -67,34 +68,32 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { firebaseUid: verifiedUid }
-    });
-
+    const user: any = await getUserByFirebaseUid(verifiedUid);
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Fetch 3 levels deep for the tree visualization
     const [referrals, rootStats] = await Promise.all([
       getReferralsRecursive(user.id, 1, 3),
-      getUserStats(user.id)
+      getUserStats(user.id),
     ]);
 
-    const nodes: any[] = [{
-      id: user.id.toString(),
-      data: {
-        label: user.name || "You",
-        isRoot: true,
-        level: 0,
-        referralCode: user.referralCode,
-        ...rootStats
+    const nodes: any[] = [
+      {
+        id: user.id,
+        data: {
+          label: user.name || "You",
+          isRoot: true,
+          level: 0,
+          referralCode: user.referralCode,
+          ...rootStats,
+        },
+        type: "input",
       },
-      type: "input"
-    }];
+    ];
     const edges: any[] = [];
 
-    flattenNodes(referrals, nodes, edges, user.id.toString());
+    flattenNodes(referrals, nodes, edges, user.id);
 
     return NextResponse.json({ nodes, edges });
   } catch (error: any) {

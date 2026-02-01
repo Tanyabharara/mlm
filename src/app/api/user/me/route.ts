@@ -1,6 +1,10 @@
 import { verifyAuthToken } from "@/lib/auth-server";
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import {
+  getUserByFirebaseUid,
+  getPlan,
+  getDirectReferrals,
+} from "@/lib/firebase-db";
 
 export async function POST(req: Request) {
   try {
@@ -11,41 +15,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { firebaseUid: verifiedUid },
-      include: {
-        plan: true,
-        referredBy: {
-          select: {
-            id: true,
-            name: true,
-            referralCode: true,
-            role: true
-          }
-        },
-        referrals: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            planId: true,
-            createdAt: true,
-            isBlocked: true
-          },
-          take: 50,
-          orderBy: { createdAt: 'desc' }
-        }
-      }
-    });
-
+    const user: any = await getUserByFirebaseUid(verifiedUid);
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const plan = user.planId ? await getPlan(user.planId) : null;
+    const referralsSlice = await getDirectReferrals(user.id, 50);
+
     return NextResponse.json({
       user: {
         ...user,
-        walletBalance: user.walletBalance.toString(), // Decimal to string for JSON
+        walletBalance: String(user.walletBalance ?? 0),
+        plan,
+        referredBy: user.referredById ? { id: user.referredById } : null,
+        referrals: referralsSlice.map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          email: r.email,
+          planId: r.planId,
+          createdAt: r.createdAt,
+          isBlocked: r.isBlocked,
+        })),
       },
     });
   } catch (error: any) {

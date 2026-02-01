@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@opentelemetry/api": "^1.8.0",
-    "@prisma/client": "^6.0.0",
     "@rainbow-me/rainbowkit": "^2.2.10",
     "@tanstack/react-query": "^5.90.20",
     "clsx": "^2.1.1",
@@ -21,7 +20,6 @@
     "kafkajs": "^2.2.4",
     "lucide-react": "^0.562.0",
     "next": "16.1.2",
-    "prisma": "^6.0.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "reactflow": "^11.11.4",

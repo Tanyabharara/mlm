@@ -1,84 +1,60 @@
-import prisma from "@/lib/prisma";
+import {
+  getAllUsers,
+  getDirectReferrals,
+  getMilestonesByUser,
+  milestoneExists,
+  createMilestone,
+  updateWalletBalance,
+  createTransaction,
+} from "./firebase-db";
 
 const MILESTONE_SLABS = [
-    { target: 10, reward: 20 },
-    { target: 20, reward: 30 },
-    { target: 50, reward: 40 },
+  { target: 10, reward: 20 },
+  { target: 20, reward: 30 },
+  { target: 50, reward: 40 },
 ];
 
-const RETENTION_DAYS = 60; // 2 months
+const RETENTION_DAYS = 60;
 
 export async function processMilestones() {
-    console.log("Starting Milestone Processing...");
+  console.log("Starting Milestone Processing...");
 
-    // 1. Get all users who might be eligible (at least 10 referrals)
-    // We filter users who have at least 10 referrals to optimize
-    const users = await prisma.user.findMany({
-        where: {
-            referrals: {
-                some: {}
-            }
-        },
-        include: {
-            referrals: {
-                where: {
-                    isBlocked: false,
-                    planId: { not: null }, // Must have an active plan
-                } as any
-            },
-            milestones: true
-        } as any
-    }) as any[];
+  const users = await getAllUsers();
 
-    for (const user of users) {
-        const achievedSlabs = user.milestones.map((m: any) => m.slab);
+  for (const user of users) {
+    const [referrals, milestones] = await Promise.all([
+      getDirectReferrals(user.id, 500),
+      getMilestonesByUser(user.id),
+    ]);
 
-        // Calculate how many referrals have completed the 60-day period
-        const now = new Date();
-        const activeRetainedReferrals = user.referrals.filter((ref: any) => {
-            const daysSinceJoined = (now.getTime() - ref.createdAt.getTime()) / (1000 * 60 * 60 * 24);
-            return daysSinceJoined >= RETENTION_DAYS;
+    const refsWithPlan = referrals.filter((ref: any) => !ref.isBlocked && ref.planId != null);
+    const now = new Date();
+    const activeRetainedReferrals = refsWithPlan.filter((ref: any) => {
+      const daysSinceJoined = (now.getTime() - new Date(ref.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+      return daysSinceJoined >= RETENTION_DAYS;
+    });
+    const referralCount = activeRetainedReferrals.length;
+    const achievedSlabs = milestones.map((m: any) => m.slab);
+
+    for (const slab of MILESTONE_SLABS) {
+      if (referralCount >= slab.target && !achievedSlabs.includes(slab.target)) {
+        const exists = await milestoneExists(user.id, slab.target);
+        if (exists) continue;
+
+        console.log(`User ${user.id} (${user.email}) achieved slab ${slab.target} with ${referralCount} retained referrals.`);
+
+        await createMilestone({ userId: user.id, slab: slab.target, amount: slab.reward });
+        await updateWalletBalance(user.id, slab.reward, "increment");
+        await createTransaction({
+          userId: user.id,
+          amount: slab.reward,
+          type: "CREDIT",
+          category: "MILESTONE_INCOME",
+          description: `Target Incentive Reward for achieving ${slab.target} direct referrals (Retained for 2 months)`,
         });
-
-        const referralCount = activeRetainedReferrals.length;
-
-        for (const slab of MILESTONE_SLABS) {
-            // Check if user reached the target and hasn't been rewarded for this slab yet
-            if (referralCount >= slab.target && !achievedSlabs.includes(slab.target)) {
-                console.log(`User ${user.id} (${user.email}) achieved slab ${slab.target} with ${referralCount} retained referrals.`);
-
-                await prisma.$transaction(async (tx: any) => {
-                    // 1. Create Milestone record (prevents double credit due to @@unique)
-                    await tx.milestone.create({
-                        data: {
-                            userId: user.id,
-                            slab: slab.target,
-                            amount: slab.reward
-                        }
-                    });
-
-                    // 2. Increment Wallet Balance
-                    await tx.user.update({
-                        where: { id: user.id },
-                        data: {
-                            walletBalance: { increment: slab.reward }
-                        }
-                    });
-
-                    // 3. Create Transaction record
-                    await tx.transaction.create({
-                        data: {
-                            userId: user.id,
-                            amount: slab.reward,
-                            type: "CREDIT",
-                            category: "MILESTONE_INCOME",
-                            description: `Target Incentive Reward for achieving ${slab.target} direct referrals (Retained for 2 months)`,
-                        }
-                    });
-                });
-            }
-        }
+      }
     }
+  }
 
-    console.log("Milestone Processing Completed.");
+  console.log("Milestone Processing Completed.");
 }
