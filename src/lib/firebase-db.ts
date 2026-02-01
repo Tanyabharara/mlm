@@ -530,7 +530,7 @@ export async function getUplineChain(userId: string): Promise<string[]> {
 
 export async function getAppConfig(key: string): Promise<{ key: string; value: string } | null> {
   const cacheKey = getCacheKey("appConfig", key);
-  const cached = getCached(cacheKey);
+  const cached = getCached<{ key: string; value: string }>(cacheKey);
   if (cached) return cached;
 
   const doc = await db.collection("appConfig").doc(key).get();
