@@ -45,10 +45,12 @@ export async function GET() {
           }
         },
         referrals: {
-          where: {
-            planId: { not: null },
-            isBlocked: false
-          } as any
+          select: {
+            id: true,
+            planId: true,
+            createdAt: true,
+            isBlocked: true
+          }
         }
       } as any
     }) as any;
@@ -115,9 +117,10 @@ export async function GET() {
     ];
 
     const now = new Date();
+    const totalActiveReferrals = dbUser.referrals.length;
     const activeRetainedReferralsCount = dbUser.referrals.filter((ref: any) => {
       const daysSinceJoined = (now.getTime() - new Date(ref.createdAt).getTime()) / (1000 * 60 * 60 * 24);
-      return daysSinceJoined >= 60; // 2 months
+      return daysSinceJoined >= 60 && ref.planId !== null; // 2 months + Paid
     }).length;
 
     const milestoneProgress = MILESTONE_SLABS.map(slab => ({
@@ -125,6 +128,7 @@ export async function GET() {
       reward: slab.reward,
       targetCount: slab.target,
       currentCount: activeRetainedReferralsCount,
+      potentialCount: totalActiveReferrals,
       isClaimed: dbUser.milestones.some((m: any) => m.slab === slab.target)
     }));
 

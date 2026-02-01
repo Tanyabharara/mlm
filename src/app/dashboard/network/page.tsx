@@ -19,8 +19,16 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function NetworkPage() {
-    const { user: authUser } = useAuth();
+    const { user: authUser, userData } = useAuth();
     const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [copyStatus, setCopyStatus] = useState<string | null>(null);
+
+    const handleInvite = (code: string) => {
+        const url = `${window.location.origin}/?ref=${code}`;
+        navigator.clipboard.writeText(url);
+        setCopyStatus(code);
+        setTimeout(() => setCopyStatus(null), 3000);
+    };
 
     // Fetch Network Data
     const { data: networkData, isLoading: networkLoading } = useQuery({
@@ -62,8 +70,12 @@ export default function NetworkPage() {
                     <p className="text-slate-400 font-medium">Visualize and manage your multi-level community hubs 🌐</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button className="px-6 py-3 bg-[#6C63FF] text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-[#6C63FF]/20 flex items-center gap-2">
-                        <Send size={14} /> Send Invitation
+                    <button
+                        onClick={() => userData?.referralCode && handleInvite(userData.referralCode)}
+                        className="px-6 py-3 bg-[#6C63FF] text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-[#6C63FF]/20 flex items-center gap-2 hover:bg-[#5B52E5] transition-all active:scale-95"
+                    >
+                        {copyStatus === userData?.referralCode ? "Link Copied! ✅" : "Send Invitation"}
+                        <Send size={14} />
                     </button>
                 </div>
             </div>
@@ -86,37 +98,64 @@ export default function NetworkPage() {
 
                     {/* Interactive Tree Root */}
                     <AnimatePresence>
-                        <div className="relative z-10 space-y-24 w-full flex flex-col items-center min-w-[600px] py-10">
+                        <div className="relative z-10 w-full flex flex-col items-center py-10 min-w-[800px]">
                             {/* Root Node */}
-                            {rootUser && (
-                                <NodeCard
-                                    user={rootUser}
-                                    isRoot
-                                    onClick={() => setSelectedUser(rootUser)}
-                                    isActive={selectedUser?.id === rootUser.id}
-                                />
-                            )}
+                            <div className="relative mb-32">
+                                {rootUser && (
+                                    <NodeCard
+                                        user={rootUser}
+                                        isRoot
+                                        onClick={() => setSelectedUser(rootUser)}
+                                        isActive={selectedUser?.id === rootUser.id}
+                                    />
+                                )}
 
-                            {/* Connection Lines (SVGs) */}
-                            <div className="absolute top-24 left-1/2 -translate-x-1/2 w-full h-24 pointer-events-none opacity-10">
-                                <svg className="w-full h-full">
-                                    <line x1="50%" y1="0" x2="25%" y2="100%" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
-                                    <line x1="50%" y1="0" x2="50%" y2="100%" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
-                                    <line x1="50%" y1="0" x2="75%" y2="100%" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
-                                </svg>
+                                {/* Dynamic Connection Lines */}
+                                {children.length > 0 && (
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-full max-w-[500px] h-32 pointer-events-none">
+                                        <svg className="w-full h-full overflow-visible" viewBox="0 0 500 120">
+                                            {children
+                                                .filter((c: any) => c.data?.level === 1)
+                                                .slice(0, 3)
+                                                .map((_: any, i: number, arr: any[]) => {
+                                                    const total = arr.length;
+                                                    const x2 = (100 / (total + 1)) * (i + 1);
+                                                    return (
+                                                        <motion.path
+                                                            key={i}
+                                                            initial={{ pathLength: 0, opacity: 0 }}
+                                                            animate={{ pathLength: 1, opacity: 0.15 }}
+                                                            d={`M 250 0 C 250 60, ${80 + (i * 170)} 60, ${80 + (i * 170)} 120`}
+                                                            fill="transparent"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                            strokeDasharray="4 4"
+                                                        />
+                                                    );
+                                                })}
+                                        </svg>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Level 1 Nodes */}
-                            <div className="flex justify-between w-full max-w-4xl gap-8">
-                                {children.length > 0 ? children.slice(0, 3).map((child: any, i: number) => (
-                                    <NodeCard
-                                        key={child.id || i}
-                                        user={child}
-                                        onClick={() => setSelectedUser(child)}
-                                        isActive={selectedUser?.id === child.id}
-                                    />
-                                )) : (
-                                    <div className="w-full p-10 text-center text-slate-300 font-black uppercase tracking-widest text-[10px]">No downline hubs detected</div>
+                            <div className="flex justify-center w-full gap-24 relative">
+                                {children.length > 0 ? children
+                                    .filter((child: any) => child.data?.level === 1)
+                                    .slice(0, 3)
+                                    .map((child: any, i: number) => (
+                                        <div key={`container-${child.id}`} className="flex flex-col items-center">
+                                            <NodeCard
+                                                key={`child-${child.id}-${i}`}
+                                                user={child}
+                                                onClick={() => setSelectedUser(child)}
+                                                isActive={selectedUser?.id === child.id}
+                                            />
+                                        </div>
+                                    )) : (
+                                    <div className="w-full p-20 text-center text-slate-300 font-black uppercase tracking-widest text-xs border-2 border-dashed border-slate-100 dark:border-white/5 rounded-[40px]">
+                                        No active downline hubs detected in your level 1 circle
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -145,20 +184,24 @@ export default function NetworkPage() {
                                 </div>
 
                                 <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-white/5">
-                                    <DetailRow label="Total Team" value="142 Member" />
-                                    <DetailRow label="Total Net" value="$12,450.00" color="text-[#6C63FF]" />
-                                    <DetailRow label="Reduction" value="12%" />
+                                    <DetailRow label="Direct Team" value={`${selectedUser.data?.referralCount || 0} Members`} />
+                                    <DetailRow label="Net Balance" value={`$${selectedUser.data?.balance || "0.00"}`} color="text-[#6C63FF]" />
+                                    <DetailRow label="Hub Status" value={selectedUser.data?.planName || "Awaiting Activation"} />
                                 </div>
 
                                 <div className="p-6 bg-[#f0e6ff]/50 dark:bg-[#2a1e3a]/20 rounded-3xl space-y-3">
                                     <p className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest leading-none">Node Summary</p>
                                     <p className="text-xs text-[#5b52e0] dark:text-[#8b9aff] font-bold leading-relaxed">
-                                        This hub has reached Level {selectedUser.data?.level || 1} efficiency and is contributing $420/mo to your upline rewards.
+                                        This hub joined on {selectedUser.data?.joinedAt ? new Date(selectedUser.data.joinedAt).toLocaleDateString() : "untracked date"} and is currently operation at Level {selectedUser.data?.level || 0} in your network.
                                     </p>
                                 </div>
 
-                                <button className="w-full py-4 bg-[#6C63FF] text-white rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#6C63FF]/20">
-                                    Send Invitation <Send size={14} />
+                                <button
+                                    onClick={() => handleInvite(selectedUser.data.referralCode)}
+                                    className="w-full py-4 bg-[#6C63FF] text-white rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#6C63FF]/20 hover:bg-[#5B52E5] transition-all active:scale-95"
+                                >
+                                    {copyStatus === selectedUser.data.referralCode ? "Invitation Copied! ✅" : "Invite Under Node"}
+                                    <Send size={14} />
                                 </button>
                             </motion.div>
                         ) : (

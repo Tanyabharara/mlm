@@ -15,6 +15,7 @@ import {
     LockKeyhole,
     X
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 
 export default function LoginPage() {
@@ -26,12 +27,18 @@ export default function LoginPage() {
     const [isVerified, setIsVerified] = useState(false);
     const [referrerName, setReferrerName] = useState("");
 
+    const searchParams = useSearchParams();
+
     useEffect(() => {
+        const urlRef = searchParams.get("ref");
         const savedRef = localStorage.getItem("referralCode");
-        if (savedRef) {
+
+        if (urlRef) {
+            setReferralCode(urlRef.toUpperCase());
+        } else if (savedRef) {
             setReferralCode(savedRef);
         }
-    }, []);
+    }, [searchParams]);
 
     useEffect(() => {
         const verifyCode = async () => {
@@ -215,10 +222,14 @@ export default function LoginPage() {
                         </p>
 
                         <button
-                            onClick={() => signInWithGoogle(referralCode)}
-                            className="w-full py-5 bg-[#6C63FF] hover:bg-[#5B52E5] text-white rounded-2xl font-black uppercase tracking-[0.15em] shadow-xl shadow-[#6C63FF]/20 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+                            onClick={() => isVerified && signInWithGoogle(referralCode)}
+                            disabled={!isVerified}
+                            className={`w-full py-5 rounded-2xl font-black uppercase tracking-[0.15em] flex items-center justify-center gap-3 transition-all active:scale-[0.98] ${isVerified
+                                ? "bg-[#6C63FF] hover:bg-[#5B52E5] text-white shadow-xl shadow-[#6C63FF]/20"
+                                : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                                }`}
                         >
-                            Join Now 🚀
+                            {isVerified ? "Join Now 🚀" : "Enter Referral to Join"}
                         </button>
 
                         <div className="relative py-4">
@@ -231,14 +242,19 @@ export default function LoginPage() {
                         </div>
 
                         <button
-                            onClick={() => signInWithGoogle(referralCode)}
-                            className="w-full py-4 border-2 border-[#F1F5F9] hover:bg-[#F8FAFC] text-[#0F172A] rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all"
+                            onClick={() => isVerified && signInWithGoogle(referralCode)}
+                            disabled={!isVerified}
+                            className={`w-full py-4 border-2 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${isVerified
+                                ? "border-[#F1F5F9] hover:bg-[#F8FAFC] text-[#0F172A]"
+                                : "border-slate-100 text-slate-300 cursor-not-allowed"
+                                }`}
                         >
                             <img
                                 src="https://www.google.com/favicon.ico"
                                 alt="Google"
                                 width={16}
                                 height={16}
+                                className={isVerified ? "" : "opacity-20"}
                             />
                             Sign In with Google
                         </button>

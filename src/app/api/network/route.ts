@@ -2,6 +2,23 @@ import { verifyAuthToken } from "@/lib/auth-server";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+async function getUserStats(userId: number) {
+  const [referralCount, info] = await Promise.all([
+    prisma.user.count({ where: { referredById: userId } }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { plan: true, createdAt: true, walletBalance: true }
+    })
+  ]);
+
+  return {
+    referralCount,
+    planName: info?.plan?.name || "No Plan",
+    balance: info?.walletBalance?.toString() || "0.00",
+    joinedAt: info?.createdAt
+  };
+}
+
 async function getReferralsRecursive(userId: number, currentLevel: number, maxLevel: number): Promise<any[]> {
   if (currentLevel > maxLevel) return [];
 
@@ -11,13 +28,19 @@ async function getReferralsRecursive(userId: number, currentLevel: number, maxLe
 
   const results = [];
   for (const ref of referrals) {
-    const children = await getReferralsRecursive(ref.id, currentLevel + 1, maxLevel);
+    const [children, stats] = await Promise.all([
+      getReferralsRecursive(ref.id, currentLevel + 1, maxLevel),
+      getUserStats(ref.id)
+    ]);
+
     results.push({
       id: ref.id.toString(),
       data: {
         label: ref.name || "User",
         level: currentLevel,
-        isRoot: false
+        isRoot: false,
+        referralCode: ref.referralCode,
+        ...stats
       },
       referrals: children
     });
@@ -53,11 +76,20 @@ export async function POST(req: Request) {
     }
 
     // Fetch 3 levels deep for the tree visualization
-    const referrals = await getReferralsRecursive(user.id, 1, 3);
+    const [referrals, rootStats] = await Promise.all([
+      getReferralsRecursive(user.id, 1, 3),
+      getUserStats(user.id)
+    ]);
 
     const nodes: any[] = [{
       id: user.id.toString(),
-      data: { label: user.name || "You", isRoot: true, level: 0 },
+      data: {
+        label: user.name || "You",
+        isRoot: true,
+        level: 0,
+        referralCode: user.referralCode,
+        ...rootStats
+      },
       type: "input"
     }];
     const edges: any[] = [];

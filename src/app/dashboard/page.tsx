@@ -286,6 +286,74 @@ export default function DashboardPage() {
                 </div>
             </div>
 
+            {/* 4. Direct Incentive Plan (Referrals List) */}
+            <div className="bg-white dark:bg-slate-900 rounded-[48px] border border-gray-100 dark:border-white/5 shadow-premium overflow-hidden">
+                <div className="p-10 border-b border-gray-50 dark:border-white/5 flex items-center justify-between">
+                    <div>
+                        <h3 className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white">Direct Incentive Plan</h3>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Real-time referral activation tracking</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded-full">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span className="text-[8px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-widest">Paid</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-red-50 dark:bg-red-500/10 rounded-full">
+                            <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                            <span className="text-[8px] font-black uppercase text-red-600 dark:text-red-400 tracking-widest">Pending</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="bg-slate-50 dark:bg-white/[0.02] text-[10px] uppercase text-slate-400 font-black tracking-widest">
+                                <th className="px-10 py-5">Partner Name</th>
+                                <th className="px-10 py-5">Email Address</th>
+                                <th className="px-10 py-5">Joined Date</th>
+                                <th className="px-10 py-5 text-right">Payment Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 dark:divide-white/5">
+                            {(!userData?.referrals || userData.referrals.length === 0) ? (
+                                <tr>
+                                    <td colSpan={4} className="px-10 py-20 text-center text-slate-300 font-bold uppercase tracking-widest text-xs">
+                                        No linked partners in your direct circle yet.
+                                    </td>
+                                </tr>
+                            ) : (
+                                userData.referrals.map((ref: any) => (
+                                    <tr key={ref.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors group">
+                                        <td className="px-10 py-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center border font-black text-xs ${ref.planId ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-red-50 text-red-600 border-red-100"}`}>
+                                                    {ref.name?.charAt(0) || "U"}
+                                                </div>
+                                                <p className="font-black text-sm text-slate-900 dark:text-white">{ref.name || "Anonymous User"}</p>
+                                            </div>
+                                        </td>
+                                        <td className="px-10 py-6 text-xs text-slate-400 font-medium lowercase">
+                                            {ref.email}
+                                        </td>
+                                        <td className="px-10 py-6 text-xs font-bold text-slate-600 dark:text-slate-400">
+                                            {new Date(ref.createdAt).toLocaleDateString()}
+                                        </td>
+                                        <td className="px-10 py-6 text-right">
+                                            <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${ref.planId
+                                                ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20 shadow-sm"
+                                                : "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-100 dark:border-red-500/20 opacity-60 group-hover:opacity-100"}`}>
+                                                {ref.planId ? "Settled ✓" : "Awaiting Pay"}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             {/* Float Action - Invite Link */}
             <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-50">
                 <div className="bg-slate-900 text-white rounded-[40px] p-6 shadow-2xl flex items-center justify-between gap-6 border border-white/10 backdrop-blur-md bg-slate-900/90">

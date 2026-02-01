@@ -67,14 +67,14 @@ export default function ActivatePage() {
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-[80px] -mr-32 -mt-32" />
                     <div className="relative z-10 space-y-6">
                         <div className="space-y-2">
-                            <h3 className="text-2xl font-black font-outfit">₹600 Plan</h3>
+                            <h3 className="text-2xl font-black font-outfit">$6 Plan</h3>
                             <p className="text-white/70 text-sm font-medium leading-tight">
                                 The ultimate gateway to passive income and rewards.
                             </p>
                         </div>
                         <div className="pt-8">
-                            <span className="text-6xl font-black font-outfit tracking-tighter">₹600</span>
-                            <span className="text-white/60 text-sm font-bold uppercase tracking-widest ml-2">one-time</span>
+                            <span className="text-6xl font-black font-outfit tracking-tighter">$6</span>
+                            <span className="text-white/60 text-sm font-bold uppercase tracking-widest ml-2">per month</span>
                         </div>
                     </div>
 

@@ -54,10 +54,6 @@ export default function EarningsPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-1">
                     <h1 className="text-4xl md:text-5xl font-black tracking-tighter">Earnings Analytics</h1>
-                    <div className="flex items-center gap-2 text-slate-400 font-medium">
-                        <span>Real-time income reveal for lili’s list*</span>
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#4CAF50] animate-pulse" />
-                    </div>
                 </div>
                 <div className="flex items-center gap-3">
                     <button className="px-6 py-3 bg-white dark:bg-slate-900 border border-gray-100 dark:border-white/5 rounded-2xl flex items-center gap-2 text-xs font-bold shadow-sm">
@@ -151,26 +147,38 @@ export default function EarningsPage() {
                                 <div className="flex justify-between items-start">
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest">Milestone {idx + 1}</p>
-                                        <h4 className="text-2xl font-black text-slate-900 dark:text-white">₹{m.reward} <span className="text-xs font-bold text-slate-400">Reward</span></h4>
+                                        <h4 className="text-2xl font-black text-slate-900 dark:text-white">${Number(m.reward) / 100} <span className="text-xs font-bold text-slate-400">Reward</span></h4>
                                     </div>
                                     <div className="px-3 py-1 bg-blue-50 dark:bg-blue-900/20 text-[#6C63FF] border border-blue-100 dark:border-blue-800/50 rounded-full text-[8px] font-black uppercase tracking-widest">
                                         Retention Status: 60d
                                     </div>
                                 </div>
 
-                                <div className="space-y-3">
+                                <div className="space-y-4">
                                     <div className="flex justify-between items-end text-[10px] font-black uppercase tracking-widest">
-                                        <div className="flex flex-col">
-                                            <span className="text-slate-900 dark:text-white">{m.currentCount}/{m.targetCount} Users</span>
-                                            <span className="text-[8px] text-slate-400 opacity-60">At least 2 months active</span>
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-slate-900 dark:text-white">{m.currentCount}/{m.targetCount} Verified</span>
+                                                <span className="text-[8px] px-1.5 py-0.5 bg-green-500/10 text-green-500 rounded-md">Retained</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-slate-400">{m.potentialCount} Active Nodes</span>
+                                                <span className="text-[8px] px-1.5 py-0.5 bg-amber-500/10 text-amber-500 rounded-md">Pending</span>
+                                            </div>
                                         </div>
-                                        <span className="text-slate-400">{Math.round(progress)}%</span>
+                                        <span className="text-[#6C63FF] text-lg font-outfit">{Math.round(progress)}%</span>
                                     </div>
-                                    <div className="h-2 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                    <div className="h-2 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden relative">
+                                        {/* Potential Progress */}
+                                        <div
+                                            className="absolute top-0 left-0 h-full bg-[#6C63FF]/30 rounded-full"
+                                            style={{ width: `${Math.min((m.potentialCount / m.targetCount) * 100, 100)}%` }}
+                                        />
+                                        {/* Verified Progress */}
                                         <motion.div
                                             initial={{ width: 0 }}
                                             animate={{ width: `${progress}%` }}
-                                            className="h-full bg-[#6C63FF] rounded-full"
+                                            className="absolute top-0 left-0 h-full bg-[#6C63FF] rounded-full z-10"
                                         />
                                     </div>
                                 </div>

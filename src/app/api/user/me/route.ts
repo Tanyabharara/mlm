@@ -24,7 +24,15 @@ export async function POST(req: Request) {
           }
         },
         referrals: {
-          take: 20,
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            planId: true,
+            createdAt: true,
+            isBlocked: true
+          },
+          take: 50,
           orderBy: { createdAt: 'desc' }
         }
       }

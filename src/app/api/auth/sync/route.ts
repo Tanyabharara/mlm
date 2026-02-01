@@ -55,29 +55,24 @@ export async function POST(req: Request) {
     // 2. Referral logic (Only if not already referred)
     if (!user.referredById) {
       let referrerId: number | null = null;
+      const effectiveCode = providedCode || (typeof window !== 'undefined' ? localStorage.getItem("referralCode") : null);
 
-      // Admin Fallback Logic
-      if (!providedCode || providedCode.toUpperCase() === 'OTTFY_ADMIN') {
+      if (effectiveCode && effectiveCode.toUpperCase() !== 'OTTFY_ADMIN') {
+        const referrer = await prisma.user.findUnique({
+          where: { referralCode: effectiveCode.toUpperCase() }
+        });
+        if (referrer && referrer.id !== user.id) {
+          referrerId = referrer.id;
+        }
+      }
+
+      // If no valid specific referrer, fallback to the first ADMIN
+      if (!referrerId) {
         const admin = await prisma.user.findFirst({
           where: { role: 'ADMIN' },
           orderBy: { id: 'asc' }
         });
         if (admin) referrerId = admin.id;
-      } else {
-        // Specific Referrer
-        const referrer = await prisma.user.findUnique({
-          where: { referralCode: providedCode }
-        });
-        if (referrer && referrer.id !== user.id) {
-          referrerId = referrer.id;
-        } else {
-          // Invalid code -> Admin Fallback
-          const admin = await prisma.user.findFirst({
-            where: { role: 'ADMIN' },
-            orderBy: { id: 'asc' }
-          });
-          if (admin) referrerId = admin.id;
-        }
       }
 
       if (referrerId) {

@@ -83,7 +83,7 @@ export default function AutoPoolPage() {
                                 <p className={`text-[10px] font-black uppercase tracking-widest ${activePoolId === pool.id ? 'text-[#6C63FF]' : 'text-slate-400'}`}>
                                     {pool.name}
                                 </p>
-                                <h3 className="text-2xl font-black text-slate-900 dark:text-white">₹{pool.entryFee}</h3>
+                                <h3 className="text-2xl font-black text-slate-900 dark:text-white">${Number(pool.entryFee)}</h3>
                             </div>
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${pool.status === 'COMPLETED' ? 'bg-[#4CAF50]/10 text-[#4CAF50]' :
                                 pool.status === 'ACTIVE' ? 'bg-[#6C63FF]/10 text-[#6C63FF]' :
@@ -193,9 +193,9 @@ export default function AutoPoolPage() {
 
                         <div className="space-y-6">
                             {[
-                                { level: 1, users: 3, percentage: 10, reward: (Number(activePool?.entryFee) * 0.10).toFixed(0) },
-                                { level: 2, users: 9, percentage: 20, reward: (Number(activePool?.entryFee) * 0.20).toFixed(0) },
-                                { level: 3, users: 27, percentage: 30, reward: (Number(activePool?.entryFee) * 0.30).toFixed(0) },
+                                { level: 1, users: 3, percentage: 10, reward: (Number(activePool?.entryFee) * 0.10).toFixed(2) },
+                                { level: 2, users: 9, percentage: 20, reward: (Number(activePool?.entryFee) * 0.20).toFixed(2) },
+                                { level: 3, users: 27, percentage: 30, reward: (Number(activePool?.entryFee) * 0.30).toFixed(2) },
                             ].map((row, i) => (
                                 <div key={i} className="flex justify-between items-center group">
                                     <div className="space-y-1">
@@ -205,8 +205,8 @@ export default function AutoPoolPage() {
                                         </p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{row.users} x ₹{row.reward}</p>
-                                        <p className="text-lg font-black text-slate-900 dark:text-white">₹{Number(row.reward) * row.users}</p>
+                                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{row.users} x ${row.reward}</p>
+                                        <p className="text-lg font-black text-slate-900 dark:text-white">${(Number(row.reward) * row.users).toFixed(2)}</p>
                                     </div>
                                 </div>
                             ))}
@@ -214,12 +214,12 @@ export default function AutoPoolPage() {
 
                         <div className="p-6 bg-slate-50 dark:bg-[#6C63FF]/5 rounded-3xl border border-transparent dark:border-[#6C63FF]/20 flex justify-between items-center">
                             <p className="text-[10px] font-black uppercase tracking-widest text-[#6C63FF]">
-                                ₹{(Number(activePool?.entryFee) * 10.2).toFixed(0)}
+                                ${(Number(activePool?.entryFee) * 10.2).toFixed(2)}
                             </p>
                         </div>
                         {activePool?.id === 2 && (
                             <p className="text-[8px] text-center text-[#ff6b6b] font-black uppercase tracking-widest -mt-4">
-                                Includes ₹20 Company Maintenance Stake
+                                Includes $0.20 Company Maintenance Stake
                             </p>
                         )}
                         <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-widest">Based on unique FIFO priority calculator</p>
@@ -233,9 +233,9 @@ export default function AutoPoolPage() {
                         </div>
                         <div className="space-y-4">
                             {[
-                                { title: 'New member added (L1-N1)', desc: '2 hours ago', val: '+₹30', color: 'green' },
+                                { title: 'New member added (L1-N1)', desc: '2 hours ago', val: `+$${(Number(activePool?.entryFee) * 0.3).toFixed(2)}`, color: 'green' },
                                 { title: 'Auto-upgrade to Pool 1', desc: 'Yesterday', val: '0', color: 'blue' },
-                                { title: 'Level 1 Complete', desc: '4 days ago', val: '+₹90', color: 'green' },
+                                { title: 'Level 1 Complete', desc: '4 days ago', val: `+$${(Number(activePool?.entryFee) * 0.9).toFixed(2)}`, color: 'green' },
                             ].map((item, i) => (
                                 <div key={i} className="flex justify-between items-center py-2">
                                     <div className="flex items-center gap-3">
