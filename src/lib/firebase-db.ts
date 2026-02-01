@@ -113,7 +113,7 @@ export type FirestorePlan = { id: string; name?: string; price?: number; levelCo
 
 export async function getUserByFirebaseUid(uid: string): Promise<FirestoreUser | null> {
   const cacheKey = getCacheKey("users", uid);
-  const cached = getCached(cacheKey);
+  const cached = getCached<FirestoreUser>(cacheKey);
   if (cached) return cached;
 
   try {
@@ -135,7 +135,7 @@ export async function getUserByFirebaseUid(uid: string): Promise<FirestoreUser |
 
 export async function getUserById(id: string): Promise<FirestoreUser | null> {
   const cacheKey = getCacheKey("users", id);
-  const cached = getCached(cacheKey);
+  const cached = getCached<FirestoreUser>(cacheKey);
   if (cached) return cached;
 
   const doc = await db.collection("users").doc(id).get();
@@ -148,7 +148,7 @@ export async function getUserById(id: string): Promise<FirestoreUser | null> {
 
 export async function getUserByReferralCode(code: string): Promise<FirestoreUser | null> {
   const cacheKey = getCacheKey("users", undefined, `referralCode:${code}`);
-  const cached = getCached(cacheKey);
+  const cached = getCached<FirestoreUser>(cacheKey);
   if (cached) return cached;
 
   try {
@@ -166,7 +166,7 @@ export async function getUserByReferralCode(code: string): Promise<FirestoreUser
 
 export async function getUserByEmail(email: string): Promise<FirestoreUser | null> {
   const cacheKey = getCacheKey("users", undefined, `email:${email}`);
-  const cached = getCached(cacheKey);
+  const cached = getCached<FirestoreUser>(cacheKey);
   if (cached) return cached;
 
   try {
