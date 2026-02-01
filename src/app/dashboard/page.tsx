@@ -18,7 +18,8 @@ import {
     Lock,
     Trophy,
     ExternalLink,
-    PlusCircle
+    PlusCircle,
+    Monitor
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EarningsData } from "@/types/earnings";
