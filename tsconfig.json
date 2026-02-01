@@ -30,5 +30,20 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "check-admins.ts",
+    "check-all-users.ts",
+    "check-treasury.ts",
+    "check-users-full.ts",
+    "single-admin-cleanup.ts",
+    "prisma",
+    "src/scripts/update-pools.ts",
+    "src/scripts/list-users.ts",
+    "src/scripts/list-pools.ts",
+    "src/scripts/list-full-users.ts",
+    "src/scripts/fix-circles.ts",
+    "src/scripts/check-referrals.ts",
+    "src/scripts/promote-admin.ts"
+  ]
 }
