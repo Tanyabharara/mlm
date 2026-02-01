@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -84,12 +83,12 @@ function LoginContent() {
                         animate={{ opacity: 1, y: 0 }}
                         className="rounded-[32px] overflow-hidden shadow-2xl mb-12 aspect-square relative bg-white flex items-center justify-center p-8"
                     >
-                        <Image
+                        <img
                             src="/growth-graphic.png"
                             alt="Growth Chart"
                             width={400}
                             height={400}
-                            className="object-contain"
+                            className="object-contain w-full h-full"
                         />
                     </motion.div>
 
@@ -278,7 +277,7 @@ function LoginContent() {
 
                         <p className="text-xs font-semibold text-[#64748B]">
                             Already have an account?{" "}
-                            <Link href="#" className="text-[#6C63FF] font-black hover:underline transition-all">
+                            <Link href="/login" className="text-[#6C63FF] font-black hover:underline transition-all">
                                 Log In Here
                             </Link>
                         </p>

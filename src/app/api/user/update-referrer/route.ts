@@ -11,23 +11,32 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        if (!referrerCode || typeof referrerCode !== "string") {
+            return NextResponse.json({ error: "Referrer code is required" }, { status: 400 });
+        }
+
         const user = await prisma.user.findUnique({
             where: { firebaseUid: verifiedUid },
-            include: { referredBy: true }
+            include: { referredBy: { select: { id: true, role: true } } }
         });
 
         if (!user) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
 
-        // Only allow changing if current referrer is an ADMIN or null
-        // And if they haven't purchased a plan yet (to prevent tree restructuring after payment)
+        // Only allow changing if they haven't purchased a plan yet (to prevent tree restructuring after payment)
         if (user.planId) {
             return NextResponse.json({ error: "Cannot change referrer after plan activation" }, { status: 400 });
         }
 
+        // Only allow changing referrer if current referrer is null or an ADMIN (prevents gaming the tree)
+        const currentReferrerIsAdminOrNull = !user.referredById || user.referredBy?.role === "ADMIN";
+        if (!currentReferrerIsAdminOrNull) {
+            return NextResponse.json({ error: "Cannot change referrer: you were referred by another partner" }, { status: 400 });
+        }
+
         const newReferrer = await prisma.user.findUnique({
-            where: { referralCode: referrerCode.toUpperCase() }
+            where: { referralCode: referrerCode.trim().toUpperCase() }
         });
 
         if (!newReferrer) {

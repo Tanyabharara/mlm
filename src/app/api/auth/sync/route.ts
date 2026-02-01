@@ -52,12 +52,12 @@ export async function POST(req: Request) {
       });
     }
 
-    // 2. Referral logic (Only if not already referred)
+    // 2. Referral logic (Only if not already referred). Use only referralCode from request body (client sends it from localStorage when applicable).
     if (!user.referredById) {
       let referrerId: number | null = null;
-      const effectiveCode = providedCode || (typeof window !== 'undefined' ? localStorage.getItem("referralCode") : null);
+      const effectiveCode = providedCode && typeof providedCode === "string" ? providedCode.trim() : null;
 
-      if (effectiveCode && effectiveCode.toUpperCase() !== 'OTTFY_ADMIN') {
+      if (effectiveCode && effectiveCode.toUpperCase() !== "OTTFY_ADMIN") {
         const referrer = await prisma.user.findUnique({
           where: { referralCode: effectiveCode.toUpperCase() }
         });
