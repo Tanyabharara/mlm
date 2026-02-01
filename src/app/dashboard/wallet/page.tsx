@@ -120,40 +120,28 @@ export default function WalletPage() {
                     </div>
                 </div>
 
-                {/* 2. Auto-Pool Progress (Circular) */}
-                <div className="bg-white dark:bg-slate-900 rounded-[48px] p-10 border border-gray-100 dark:border-white/5 flex flex-col items-center justify-center text-center space-y-6 shadow-xl relative group">
-                    <div className="relative w-48 h-48">
-                        {/* Circular Progress SVG */}
-                        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                            <circle
-                                cx="50" cy="50" r="40"
-                                className="fill-none stroke-slate-50 dark:stroke-white/5"
-                                strokeWidth="8"
-                            />
-                            <motion.circle
-                                cx="50" cy="50" r="40"
-                                className="fill-none stroke-[#6C63FF]"
-                                strokeWidth="8"
-                                strokeLinecap="round"
-                                strokeDasharray="251.2"
-                                initial={{ strokeDashoffset: 251.2 }}
-                                animate={{ strokeDashoffset: 251.2 - (251.2 * poolFillPercent) / 100 }}
-                                transition={{ duration: 2, ease: "circOut" }}
-                            />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-4xl font-black tracking-tighter text-[#6C63FF]">{poolFillPercent}%</span>
-                            <span className="text-[8px] font-black uppercase text-slate-400">Filled</span>
+                {/* 2. Total Earnings Overview */}
+                <div className="bg-white dark:bg-slate-900 rounded-[48px] p-10 border border-gray-100 dark:border-white/5 flex flex-col justify-between space-y-8 shadow-xl">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500">
+                            <TrendingUp size={24} />
+                        </div>
+                        <h4 className="text-sm font-black font-outfit text-slate-900 dark:text-white uppercase tracking-wider">Earnings Performance</h4>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Direct Bonuses</p>
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white">${earnings?.directIncome || "0.00"}</h3>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Pool Income</p>
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white">${earnings?.poolIncome || "0.00"}</h3>
                         </div>
                     </div>
-                    <div>
-                        <h3 className="text-xl font-black tracking-tighter">Auto-Pool Logic</h3>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
-                            {earnings?.autoPool?.filled || 0} / {earnings?.autoPool?.total || 27} Members Joined
-                        </p>
-                    </div>
-                    <div className="absolute top-6 right-6 p-2 bg-blue-50 dark:bg-blue-900/20 text-[#6C63FF] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Info size={14} />
+
+                    <div className="pt-4 border-t border-slate-50 dark:border-white/5">
+                        <p className="text-[10px] font-bold text-[#6C63FF] uppercase tracking-widest">Compounded Growth Model</p>
                     </div>
                 </div>
 

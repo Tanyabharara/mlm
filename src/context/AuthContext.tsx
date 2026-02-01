@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               photoURL: authUser.photoURL,
               // Note: On reconnect, we might not have the referral code in state, 
               // but sync handles existing user logic.
-              referralCode: localStorage.getItem("referralCode"),
+              referralCode: typeof window !== 'undefined' ? localStorage.getItem("referralCode") : null,
             }),
           });
           await fetchUserData(authUser);

@@ -11,6 +11,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const USDT_ADDRESS = '0x55d398326f99059fF775485246999027B3197955'; // Mainnet USDT (BSC)
 
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+
 export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdToken: () => Promise<string>, amount?: string }) {
     const [mounted, setMounted] = useState(false);
     const { isConnected, address } = useAccount();
@@ -32,13 +34,15 @@ export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdT
     useEffect(() => {
         const fetchConfig = async () => {
             try {
-                const res = await fetch('/api/admin/config-public'); // New public endpoint for price/address
+                const res = await fetch('/api/admin/config-public');
                 const data = await res.json();
                 setAdminConfig(data.config);
             } catch (e) {
                 console.error("Failed to load platform config");
-                // Fallback default
-                setAdminConfig({ treasuryAddress: '0xYourTreasuryWalletAddressHere', planPrice: '600' });
+                setAdminConfig({
+                    treasuryAddress: process.env.NEXT_PUBLIC_TREASURY_WALLET_ADDRESS || '0xC9694a22C617816638ec4F5bB2c2150886c66032',
+                    planPrice: '6'
+                });
             }
         };
         fetchConfig();
@@ -51,7 +55,6 @@ export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdT
             setError(null);
             setIsProcessing(true);
 
-            // 1. Generate Payment Intent on Backend
             const idToken = await onIdToken();
             const intentRes = await fetch('/api/web3/intent', {
                 method: 'POST',
@@ -59,7 +62,7 @@ export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdT
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${idToken}`
                 },
-                body: JSON.stringify({ amount: customAmount || adminConfig.planPrice || '600' })
+                body: JSON.stringify({ amount: customAmount || adminConfig.planPrice || '6' })
             });
 
             const { intent, error: intentError } = await intentRes.json();
@@ -67,8 +70,7 @@ export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdT
 
             setPaymentIntentId(intent.id);
 
-            // 2. Execute Wallet Transaction
-            const amount = parseUnits(customAmount || adminConfig.planPrice || '600', 18);
+            const amount = parseUnits(customAmount || adminConfig.planPrice || '6', 18);
 
             writeContract({
                 address: USDT_ADDRESS,
@@ -94,7 +96,6 @@ export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdT
         }
     };
 
-    // When tx is submitted, take user to the status page
     useEffect(() => {
         if (hash && paymentIntentId) {
             onIdToken().then(idToken => {
@@ -113,7 +114,12 @@ export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdT
     }, [hash, paymentIntentId]);
 
     if (!mounted) return null;
-    if (!isConnected) return null;
+    if (!isConnected) return (
+        <div className="flex flex-col items-center gap-4 py-6">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Connect your wallet to pay</p>
+            <ConnectButton label="Connect Wallet for Payment" />
+        </div>
+    );
     if (!adminConfig) return <div className="p-4 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-[#6C63FF]" /></div>;
 
     return (

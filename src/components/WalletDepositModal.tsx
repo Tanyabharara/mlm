@@ -13,7 +13,7 @@ interface WalletDepositModalProps {
     initialAmount?: string;
 }
 
-export default function WalletDepositModal({ isOpen, onClose, onSuccess, initialAmount = "600" }: WalletDepositModalProps) {
+export default function WalletDepositModal({ isOpen, onClose, onSuccess, initialAmount = "6" }: WalletDepositModalProps) {
     const [amount, setAmount] = useState(initialAmount);
     const [step, setStep] = useState<'input' | 'payment' | 'success'>('input');
     const { user: authUser } = useAuth();
@@ -58,7 +58,7 @@ export default function WalletDepositModal({ isOpen, onClose, onSuccess, initial
                             <>
                                 <div className="space-y-4 text-center">
                                     <h2 className="text-2xl font-black font-outfit tracking-tight">Enter Deposit Amount</h2>
-                                    <p className="text-xs text-slate-500 font-medium">Add USDT to your balance to activate nodes and earn rewards.</p>
+                                    <p className="text-xs text-slate-500 font-medium">Add USDT to your balance. Min $0.01 for testing.</p>
                                 </div>
 
                                 <div className="relative group">
@@ -67,6 +67,7 @@ export default function WalletDepositModal({ isOpen, onClose, onSuccess, initial
                                     </div>
                                     <input
                                         type="number"
+                                        step="0.01"
                                         value={amount}
                                         onChange={(e) => setAmount(e.target.value)}
                                         placeholder="0.00"
@@ -78,7 +79,7 @@ export default function WalletDepositModal({ isOpen, onClose, onSuccess, initial
                                 </div>
 
                                 <div className="grid grid-cols-3 gap-3">
-                                    {['600', '1000', '5000'].map((val) => (
+                                    {['1', '6', '50'].map((val) => (
                                         <button
                                             key={val}
                                             onClick={() => setAmount(val)}
@@ -119,7 +120,7 @@ export default function WalletDepositModal({ isOpen, onClose, onSuccess, initial
 
                                     <Web3Payment onIdToken={() => authUser!.getIdToken()} amount={amount} />
                                     <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-wider">
-                                        * Deposits of $600+ automatically activate your Growth Plan.
+                                        * Deposits of $6+ automatically activate your Growth Plan.
                                     </p>
                                 </div>
                             </div>

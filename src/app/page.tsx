@@ -18,8 +18,10 @@ import {
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 
-export default function LoginPage() {
-    const { signInWithGoogle, user } = useAuth();
+import { Suspense } from "react";
+
+function LoginContent() {
+    const { signInWithGoogle } = useAuth();
     const [referralCode, setReferralCode] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -31,7 +33,7 @@ export default function LoginPage() {
 
     useEffect(() => {
         const urlRef = searchParams.get("ref");
-        const savedRef = localStorage.getItem("referralCode");
+        const savedRef = typeof window !== 'undefined' ? localStorage.getItem("referralCode") : null;
 
         if (urlRef) {
             setReferralCode(urlRef.toUpperCase());
@@ -50,7 +52,9 @@ export default function LoginPage() {
                     if (data.valid) {
                         setIsVerified(true);
                         setReferrerName(data.name);
-                        localStorage.setItem("referralCode", referralCode.toUpperCase());
+                        if (typeof window !== 'undefined') {
+                            localStorage.setItem("referralCode", referralCode.toUpperCase());
+                        }
                     } else {
                         setIsVerified(false);
                         setReferrerName("");
@@ -282,5 +286,13 @@ export default function LoginPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center font-black uppercase tracking-widest text-slate-400">Initializing...</div>}>
+            <LoginContent />
+        </Suspense>
     );
 }
