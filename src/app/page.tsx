@@ -121,7 +121,7 @@ function LoginContent() {
                         <div className="w-10 h-10 bg-[#6C63FF] rounded-xl flex items-center justify-center text-white">
                             <ShieldCheck size={24} />
                         </div>
-                        <span className="text-2xl font-black tracking-tighter text-[#0F172A] font-outfit">TrustRefer</span>
+                        <span className="text-2xl font-black tracking-tighter text-[#0F172A] font-outfit">OTTFY</span>
                     </div>
 
                     <div className="space-y-2">

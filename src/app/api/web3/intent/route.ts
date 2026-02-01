@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
         const decodedToken = await adminAuth.verifyIdToken(token);
         const firebaseUid = decodedToken.uid;
 
-        const { amount, category = 'TOPUP' } = await req.json();
+        const { amount, category = 'TOPUP', platform, ottId } = await req.json();
 
         if (!amount || isNaN(Number(amount))) {
             return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
@@ -35,8 +35,22 @@ export async function POST(req: NextRequest) {
                 token: 'USDT',
                 network: 'BSC',
                 status: 'INITIATED',
+                // If platform is provided, we'll link it later or create it now
             },
         });
+
+        // If the intent is for a specific OTT platform, create a pending subscription
+        if (platform && ottId) {
+            await prisma.ottSubscription.create({
+                data: {
+                    userId: user.id,
+                    paymentIntentId: intent.id,
+                    platform: platform,
+                    username: ottId, // Temporary storage for customer-provided ID
+                    status: 'PENDING_PAYMENT'
+                }
+            });
+        }
 
         return NextResponse.json({ intent });
     } catch (error: any) {

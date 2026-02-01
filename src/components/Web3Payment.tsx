@@ -24,6 +24,7 @@ export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdT
     const [error, setError] = useState<string | null>(null);
     const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
     const [adminConfig, setAdminConfig] = useState<any>(null);
+    const [platform, setPlatform] = useState('OTTFY TV');
 
     const { writeContract, data: hash, error: writeError } = useWriteContract();
 
@@ -41,7 +42,7 @@ export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdT
                 console.error("Failed to load platform config");
                 setAdminConfig({
                     treasuryAddress: process.env.NEXT_PUBLIC_TREASURY_WALLET_ADDRESS || '0xC9694a22C617816638ec4F5bB2c2150886c66032',
-                    planPrice: '6'
+                    planPrice: '600'
                 });
             }
         };
@@ -62,7 +63,10 @@ export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdT
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${idToken}`
                 },
-                body: JSON.stringify({ amount: customAmount || adminConfig.planPrice || '6' })
+                body: JSON.stringify({
+                    amount: customAmount || adminConfig.planPrice || '600',
+                    platform
+                })
             });
 
             const { intent, error: intentError } = await intentRes.json();
@@ -70,7 +74,7 @@ export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdT
 
             setPaymentIntentId(intent.id);
 
-            const amount = parseUnits(customAmount || adminConfig.planPrice || '6', 18);
+            const amount = parseUnits(customAmount || adminConfig.planPrice || '600', 18);
 
             writeContract({
                 address: USDT_ADDRESS,
@@ -123,7 +127,24 @@ export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdT
     if (!adminConfig) return <div className="p-4 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-[#6C63FF]" /></div>;
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
+            <div className="space-y-4 bg-white/5 p-6 rounded-3xl border border-white/10 shadow-inner">
+                <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Choose Platform</label>
+                    <select
+                        value={platform}
+                        onChange={(e) => setPlatform(e.target.value)}
+                        className="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-3 px-4 text-white font-bold focus:outline-none focus:ring-2 focus:ring-[#6C63FF]/50 appearance-none cursor-pointer hover:bg-slate-800/50 transition-all"
+                    >
+                        <option>OTTFY TV</option>
+                        <option>Netflix Premium</option>
+                        <option>Amazon Prime</option>
+                        <option>Disney+ Hotstar</option>
+                    </select>
+                </div>
+                <p className="text-[9px] text-white/40 font-medium italic">After payment, Admin will generate and provide your Device ID/Code.</p>
+            </div>
+
             <AnimatePresence>
                 {(error || writeError) && (
                     <motion.div
@@ -166,6 +187,48 @@ export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdT
                     </>
                 )}
             </button>
+
+            {/* Sandbox Simulation Button */}
+            {process.env.NEXT_PUBLIC_SANDBOX_MODE === "true" && (
+                <button
+                    onClick={async () => {
+                        try {
+                            setIsProcessing(true);
+                            const idToken = await onIdToken();
+                            const intentRes = await fetch('/api/web3/intent', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${idToken}`
+                                },
+                                body: JSON.stringify({
+                                    amount: customAmount || adminConfig.planPrice || '600',
+                                    platform
+                                })
+                            });
+                            const { intent } = await intentRes.json();
+                            const fakeHash = `sandbox_${Math.random().toString(36).substring(2)}`;
+
+                            await fetch('/api/web3/purchase', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${idToken}`
+                                },
+                                body: JSON.stringify({ txHash: fakeHash, paymentIntentId: intent.id })
+                            });
+
+                            window.location.href = `/dashboard/payment/${intent.id}?tx=${fakeHash}`;
+                        } catch (err) {
+                            console.error(err);
+                            setIsProcessing(false);
+                        }
+                    }}
+                    className="w-full py-3 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-500/20 transition-all"
+                >
+                    🧪 Simulate Payment (Sandbox)
+                </button>
+            )}
 
             <p className="text-[10px] text-center text-white/50 font-bold uppercase tracking-wider">
                 Production-Grade Verification (12 Confirms)

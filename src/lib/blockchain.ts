@@ -37,6 +37,14 @@ export async function verifyOnChain(txHash: string, paymentIntentId: string) {
 
         if (!existingIntent || existingIntent.status === 'VERIFIED') return;
 
+        // SANDBOX MODE: Bypass real chain verification
+        if (txHash.startsWith('sandbox_')) {
+            console.log(`[Flow] Sandbox payment detected for Intent: ${paymentIntentId}`);
+            await finalizePayment(paymentIntentId, txHash, Number(existingIntent.amount));
+            console.log(`[Flow] Sandbox payment finalized for Intent: ${paymentIntentId}`);
+            return;
+        }
+
         const receipt = await provider.getTransactionReceipt(txHash);
         if (!receipt || receipt.status === 0) {
             throw new Error('Transaction failed on-chain or not found');
@@ -116,26 +124,33 @@ export async function finalizePayment(paymentIntentId: string, txHash: string, a
             walletBalance: { increment: amount }
         }
     });
+    console.log(`[Flow] Wallet updated for User ${intent.userId}. New Balance: ${updatedUser.walletBalance}`);
 
     // 4. If amount matches plan price and user has no plan, activate it
     const { planPrice } = await getPlatformConfig();
+    console.log(`[Flow] Checking for Plan Activation: Amount=${amount}, PlanPrice=${planPrice}, ExistingPlan=${updatedUser.planId}`);
+
     if (amount >= planPrice && !updatedUser.planId) {
-        const plan = await prisma.plan.findFirst();
-        if (plan) {
-            await prisma.user.update({
-                where: { id: intent.userId },
-                data: { planId: plan.id }
-            });
+        try {
+            const plan = await prisma.plan.findFirst();
+            if (plan) {
+                await prisma.user.update({
+                    where: { id: intent.userId },
+                    data: { planId: plan.id }
+                });
 
-            const purchase = await prisma.purchase.create({
-                data: {
-                    userId: intent.userId,
-                    planId: plan.id
-                }
-            });
+                const purchase = await prisma.purchase.create({
+                    data: {
+                        userId: intent.userId,
+                        planId: plan.id
+                    }
+                });
 
-            console.log(`[Flow] Activating Plan via Deposit for Purchase ${purchase.id}`);
-            await distributeIncome(purchase.id);
+                console.log(`[Flow] Activating Plan via Deposit for Purchase ${purchase.id}`);
+                await distributeIncome(purchase.id);
+            }
+        } catch (planError: any) {
+            console.error(`[Flow] Critical: Plan activation failed, but wallet was credited: ${planError.message}`);
         }
     }
 

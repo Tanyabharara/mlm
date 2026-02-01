@@ -1,64 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
 model User {
-  id               Int      @id @default(autoincrement())
-  firebaseUid      String   @unique
-  email            String   @unique
-  name             String?
-  photoURL         String?
-  role             String   @default("USER") // USER or ADMIN
-  referralCode     String   @unique
-  referredById     Int?
-  referredBy       User?    @relation("ReferralTree", fields: [referredById], references: [id])
-  referrals        User[]   @relation("ReferralTree")
-  planId           Int?
-  plan             Plan?    @relation(fields: [planId], references: [id])
-  walletBalance    Decimal  @default(0.0)
-  isBlocked        Boolean  @default(false)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  milestones       Milestone[]
-  purchases        Purchase[]
-  transactions     Transaction[]
+  id                 Int                 @id @default(autoincrement())
+  firebaseUid        String              @unique
+  email              String              @unique
+  name               String?
+  photoURL           String?
+  role               String              @default("USER")
+  referralCode       String              @unique
+  referredById       Int?
+  planId             Int?
+  walletBalance      Decimal             @default(0.0)
+  isBlocked          Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  poolEntries        AutoPoolEntry[]
+  milestones         Milestone[]
+  ottSubscriptions   OttSubscription[]
+  paymentIntents     PaymentIntent[]
+  purchases          Purchase[]
+  transactions       Transaction[]
+  plan               Plan?               @relation(fields: [planId], references: [id])
+  referredBy         User?               @relation("ReferralTree", fields: [referredById], references: [id])
+  referrals          User[]              @relation("ReferralTree")
   withdrawalRequests WithdrawalRequest[]
-  poolEntries      AutoPoolEntry[]
-  paymentIntents   PaymentIntent[]
-  ottSubscriptions OttSubscription[]
 }
 
 model OttSubscription {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id])
-  platform    String   // e.g., Netflix, Prime, Disney+
-  username    String?
-  password    String?
-  link        String?
-  status      String   @default("PENDING") // PENDING, ACTIVE, EXPIRED
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              Int            @id @default(autoincrement())
+  userId          Int
+  paymentIntentId String?        @unique
+  platform        String
+  username        String?
+  password        String?
+  link            String?
+  status          String         @default("PENDING")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  paymentIntent   PaymentIntent? @relation(fields: [paymentIntentId], references: [id])
+  user            User           @relation(fields: [userId], references: [id])
 }
 
 model Plan {
-  id               Int      @id @default(autoincrement())
+  id               Int        @id @default(autoincrement())
   name             String
   price            Decimal
   levelCount       Int
-  levelPercentages String   // JSON string
-  users            User[]
+  levelPercentages String
   purchases        Purchase[]
+  users            User[]
 }
 
 model AutoPool {
   id          Int             @id @default(autoincrement())
-  name        String          // Pool 1, Pool 2, Pool 3
+  name        String
   entryFee    Decimal
   matrixWidth Int             @default(3)
   matrixDepth Int             @default(3)
@@ -67,78 +69,79 @@ model AutoPool {
 }
 
 model AutoPoolEntry {
-  id          Int       @id @default(autoincrement())
-  user        User      @relation(fields: [userId], references: [id])
+  id          Int             @id @default(autoincrement())
   userId      Int
-  pool        AutoPool  @relation(fields: [poolId], references: [id])
   poolId      Int
   parentId    Int?
-  parent      AutoPoolEntry? @relation("PoolTree", fields: [parentId], references: [id])
-  children    AutoPoolEntry[] @relation("PoolTree")
-  level       Int       @default(1)
-  isCompleted Boolean   @default(false)
-  createdAt   DateTime  @default(now())
+  level       Int             @default(1)
+  isCompleted Boolean         @default(false)
+  createdAt   DateTime        @default(now())
   completedAt DateTime?
+  parent      AutoPoolEntry?  @relation("PoolTree", fields: [parentId], references: [id])
+  children    AutoPoolEntry[] @relation("PoolTree")
+  pool        AutoPool        @relation(fields: [poolId], references: [id])
+  user        User            @relation(fields: [userId], references: [id])
 }
 
 model Purchase {
   id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
   userId    Int
-  plan      Plan     @relation(fields: [planId], references: [id])
   planId    Int
   createdAt DateTime @default(now())
+  plan      Plan     @relation(fields: [planId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model Transaction {
   id          Int      @id @default(autoincrement())
-  user        User     @relation(fields: [userId], references: [id])
   userId      Int
   amount      Decimal
-  type        String   // CREDIT or DEBIT
-  category    String   // DIRECT_INCOME, POOL_INCOME, WITHDRAWAL, RE_ENTRY
+  type        String
+  category    String
   description String?
-  txHash      String?  @unique // For on-chain cross-referencing
+  txHash      String?  @unique
   createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
 }
 
 model PaymentIntent {
-  id              String   @id @default(cuid())
-  userId          Int
-  user            User     @relation(fields: [userId], references: [id])
-  amount          Decimal  // e.g. 600
-  token           String   @default("USDT")
-  network         String   @default("BSC")
-  status          String   @default("INITIATED") // INITIATED, PENDING, VERIFIED, FAILED
-  txHash          String?  @unique
-  confirmations   Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String   @id @default(cuid())
+  userId        Int
+  amount        Decimal
+  token         String   @default("USDT")
+  network       String   @default("BSC")
+  status        String   @default("INITIATED")
+  txHash        String?  @unique
+  confirmations Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt       DateTime         @updatedAt
+  user            User             @relation(fields: [userId], references: [id])
+  ottSubscription OttSubscription?
 }
 
 model WithdrawalRequest {
-  id          Int      @id @default(autoincrement())
-  user        User     @relation(fields: [userId], references: [id])
+  id          Int       @id @default(autoincrement())
   userId      Int
   amount      Decimal
-  status      String   @default("PENDING")
-  createdAt   DateTime @default(now())
+  status      String    @default("PENDING")
+  createdAt   DateTime  @default(now())
   processedAt DateTime?
+  user        User      @relation(fields: [userId], references: [id])
 }
 
 model Milestone {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id])
-  slab        Int      // 10, 20, 50
-  amount      Decimal
-  createdAt   DateTime @default(now())
-  
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  slab      Int
+  amount    Decimal
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
   @@unique([userId, slab])
 }
 
 model AppConfig {
   id    Int    @id @default(autoincrement())
   key   String @unique
-  value String // JSON or raw value
+  value String
 }
