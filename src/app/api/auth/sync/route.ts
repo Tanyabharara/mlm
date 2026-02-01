@@ -1,20 +1,23 @@
 import { verifyAuthToken } from "@/lib/auth-server";
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import {
+  getUserByFirebaseUid,
+  getUserByReferralCode,
+  getFirstAdminUser,
+  createUser,
+  updateUser,
+} from "@/lib/firebase-db";
 
 async function generateUniqueReferralCode(): Promise<string> {
   let attempts = 0;
   while (attempts < 20) {
-    // Format: REF - 4 digits - 2 letters/digits
     const part1 = Math.floor(1000 + Math.random() * 9000);
     const part2 = Math.random().toString(36).substring(2, 4).toUpperCase();
     const code = `REF-${part1}-${part2}`;
-
-    const existing = await prisma.user.findUnique({ where: { referralCode: code } });
+    const existing = await getUserByReferralCode(code);
     if (!existing) return code;
     attempts++;
   }
-  // Fallback if needed
   return "REF-" + Math.random().toString(36).substring(2, 10).toUpperCase();
 }
 
@@ -33,53 +36,38 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // 1. Find or Create User
-    let user = await prisma.user.findUnique({
-      where: { firebaseUid: verifiedUid }
-    });
+    let user = await getUserByFirebaseUid(verifiedUid);
 
     if (!user) {
       const newCode = await generateUniqueReferralCode();
-      user = await prisma.user.create({
-        data: {
-          firebaseUid: verifiedUid,
-          email,
-          name: name || "User",
-          photoURL: photoURL || "",
-          referralCode: newCode,
-          role: "USER"
-        }
+      user = await createUser({
+        firebaseUid: verifiedUid,
+        email,
+        name: name || "User",
+        photoURL: photoURL || "",
+        referralCode: newCode,
+        role: "USER",
       });
     }
 
-    // 2. Referral logic (Only if not already referred). Use only referralCode from request body (client sends it from localStorage when applicable).
     if (!user.referredById) {
-      let referrerId: number | null = null;
+      let referrerId: string | null = null;
       const effectiveCode = providedCode && typeof providedCode === "string" ? providedCode.trim() : null;
 
       if (effectiveCode && effectiveCode.toUpperCase() !== "OTTFY_ADMIN") {
-        const referrer = await prisma.user.findUnique({
-          where: { referralCode: effectiveCode.toUpperCase() }
-        });
+        const referrer = await getUserByReferralCode(effectiveCode.toUpperCase());
         if (referrer && referrer.id !== user.id) {
           referrerId = referrer.id;
         }
       }
 
-      // If no valid specific referrer, fallback to the first ADMIN
       if (!referrerId) {
-        const admin = await prisma.user.findFirst({
-          where: { role: 'ADMIN' },
-          orderBy: { id: 'asc' }
-        });
+        const admin = await getFirstAdminUser();
         if (admin) referrerId = admin.id;
       }
 
       if (referrerId) {
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: { referredById: referrerId }
-        });
+        user = await updateUser(user.id, { referredById: referrerId });
       }
     }
 

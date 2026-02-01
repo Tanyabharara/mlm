@@ -1,37 +1,26 @@
 import { NextResponse } from "next/server";
-import prisma, { logDbConnection } from "@/lib/prisma";
+import { firestore } from "@/lib/firebase-db";
 
-/**
- * GET /api/db - Test DB connection and return exact status/error.
- * Use this to debug connection issues (check server logs + response).
- */
 export async function GET() {
-  const hasUrl = !!process.env.DATABASE_URL;
-  const urlPreview = hasUrl
-    ? process.env.DATABASE_URL!.replace(/:[^:@]+@/, ":****@").slice(0, 60) + "..."
-    : "(not set)";
+  const hasFirebase = !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
   try {
-    await prisma.$connect();
+    const ref = firestore.collection("users").limit(1);
+    await ref.get();
     return NextResponse.json({
       ok: true,
-      message: "DB connected",
-      env: { DATABASE_URL: urlPreview },
+      message: "Firestore connected",
+      env: { FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "(not set)" },
     });
   } catch (e: unknown) {
-    const err = e as Error & { code?: string; meta?: unknown };
-    console.error("[DB] /api/db connection failed:", {
-      message: err.message,
-      code: err.code,
-      meta: err.meta,
-    });
+    const err = e as Error & { code?: string };
+    console.error("[DB] /api/db Firestore check failed:", { message: err.message, code: err.code });
     return NextResponse.json(
       {
         ok: false,
         error: err.message,
         code: err.code ?? null,
-        meta: err.meta ?? null,
-        env: { DATABASE_URL: urlPreview },
+        env: { FIREBASE_PROJECT_ID: hasFirebase ? "set" : "(not set)" },
       },
       { status: 503 }
     );

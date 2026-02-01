@@ -1,7 +1,21 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-import prisma from "@/lib/prisma";
 import { adminAuth } from "@/lib/firebase-db";
+import {
+  getUserByFirebaseUid,
+  getTransactions,
+  getAutoPoolEntriesByUser,
+  getAutoPoolEntryChildren,
+  getMilestonesByUser,
+  getDirectReferrals,
+  getAutoPools,
+} from "@/lib/firebase-db";
+
+async function buildEntryTree(entry: any): Promise<any> {
+  const children = await getAutoPoolEntryChildren(entry.id);
+  const childrenWithNested = await Promise.all(children.map((c: any) => buildEntryTree(c)));
+  return { ...entry, children: childrenWithNested };
+}
 
 export async function GET() {
   try {
@@ -25,67 +39,29 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 1. Get user from Prisma
-    const dbUser = await prisma.user.findUnique({
-      where: { firebaseUid: verifiedUid },
-      include: {
-        milestones: true,
-        poolEntries: {
-          include: {
-            pool: true,
-            children: {
-              include: {
-                children: {
-                  include: {
-                    children: true
-                  }
-                }
-              }
-            }
-          }
-        },
-        referrals: {
-          select: {
-            id: true,
-            planId: true,
-            createdAt: true,
-            isBlocked: true
-          }
-        }
-      } as any
-    }) as any;
-
+    const dbUser: any = await getUserByFirebaseUid(verifiedUid);
     if (!dbUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // 2. Fetch data from Prisma
-    const transactions = await prisma.transaction.findMany({
-      where: { userId: dbUser.id },
-      orderBy: { createdAt: 'desc' },
-      take: 20
-    });
+    const [transactions, poolEntriesFlat, milestones, referrals, allPoolConfigs] = await Promise.all([
+      getTransactions(dbUser.id, 20),
+      getAutoPoolEntriesByUser(dbUser.id),
+      getMilestonesByUser(dbUser.id),
+      getDirectReferrals(dbUser.id, 500),
+      getAutoPools(),
+    ]);
 
-    const poolEntry = await prisma.autoPoolEntry.findFirst({
-      where: { userId: dbUser.id, isCompleted: false },
-      include: {
-        pool: true,
-        children: {
-          include: {
-            children: {
-              include: { children: true }
-            }
-          }
-        }
-      }
-    });
+    const poolEntries = await Promise.all(
+      poolEntriesFlat.map((e: any) => buildEntryTree(e))
+    );
 
     const totalEarnings = transactions
-      .filter((t) => t.type === "CREDIT")
-      .reduce((acc, t) => acc + Number(t.amount), 0);
+      .filter((t: any) => t.type === "CREDIT")
+      .reduce((acc: number, t: any) => acc + Number(t.amount), 0);
 
     const levelEarnings = new Array(10).fill(0);
-    transactions.forEach(t => {
+    transactions.forEach((t: any) => {
       if (t.type === "CREDIT" && t.category === "DIRECT_INCOME") {
         const match = t.description?.match(/Level (\d+)/);
         if (match) {
@@ -98,18 +74,17 @@ export async function GET() {
     });
 
     const directIncome = transactions
-      .filter((t) => t.category === "DIRECT_INCOME")
-      .reduce((acc, t) => acc + Number(t.amount), 0);
+      .filter((t: any) => t.category === "DIRECT_INCOME")
+      .reduce((acc: number, t: any) => acc + Number(t.amount), 0);
 
     const poolIncome = transactions
-      .filter((t) => t.category === "POOL_INCOME")
-      .reduce((acc, t) => acc + Number(t.amount), 0);
+      .filter((t: any) => t.category === "POOL_INCOME")
+      .reduce((acc: number, t: any) => acc + Number(t.amount), 0);
 
     const milestoneIncome = transactions
-      .filter((t) => t.category === "MILESTONE_INCOME")
-      .reduce((acc, t) => acc + Number(t.amount), 0);
+      .filter((t: any) => t.category === "MILESTONE_INCOME")
+      .reduce((acc: number, t: any) => acc + Number(t.amount), 0);
 
-    // Calculate milestone progress
     const MILESTONE_SLABS = [
       { target: 10, reward: 20 },
       { target: 20, reward: 30 },
@@ -117,77 +92,73 @@ export async function GET() {
     ];
 
     const now = new Date();
-    const totalActiveReferrals = dbUser.referrals.length;
-    const activeRetainedReferralsCount = dbUser.referrals.filter((ref: any) => {
+    const totalActiveReferrals = referrals.length;
+    const activeRetainedReferralsCount = referrals.filter((ref: any) => {
       const daysSinceJoined = (now.getTime() - new Date(ref.createdAt).getTime()) / (1000 * 60 * 60 * 24);
-      return daysSinceJoined >= 60 && ref.planId !== null; // 2 months + Paid
+      return daysSinceJoined >= 60 && ref.planId != null;
     }).length;
 
-    const milestoneProgress = MILESTONE_SLABS.map(slab => ({
+    const milestoneProgress = MILESTONE_SLABS.map((slab) => ({
       slab: slab.target,
       reward: slab.reward,
       targetCount: slab.target,
       currentCount: activeRetainedReferralsCount,
       potentialCount: totalActiveReferrals,
-      isClaimed: dbUser.milestones.some((m: any) => m.slab === slab.target)
+      isClaimed: milestones.some((m: any) => m.slab === slab.target),
     }));
 
-    // Calculate detailed pool stats for all 3 pools
-    const allPoolConfigs = await prisma.autoPool.findMany({ orderBy: { id: 'asc' } });
     const allPoolsData = allPoolConfigs.map((pool: any) => {
-      const entry = dbUser.poolEntries.find((e: any) => e.poolId === pool.id);
+      const entry = poolEntries.find((e: any) => String(e.poolId) === String(pool.id));
 
       let l1 = 0, l2 = 0, l3 = 0;
       if (entry) {
-        l1 = entry.children.length;
-        entry.children.forEach((c1: any) => {
-          l2 += c1.children.length;
-          c1.children.forEach((c2: any) => {
-            l3 += c2.children.length;
+        l1 = entry.children?.length ?? 0;
+        (entry.children || []).forEach((c1: any) => {
+          l2 += c1.children?.length ?? 0;
+          (c1.children || []).forEach((c2: any) => {
+            l3 += c2.children?.length ?? 0;
           });
         });
       }
 
       const poolEarned = transactions
-        .filter(t => t.category === "POOL_INCOME" && t.description?.includes(pool.name))
-        .reduce((acc, t) => acc + Number(t.amount), 0);
+        .filter((t: any) => t.category === "POOL_INCOME" && t.description?.includes(pool.name))
+        .reduce((acc: number, t: any) => acc + Number(t.amount), 0);
 
-      // Status logic
-      let status: 'ACTIVE' | 'COMPLETED' | 'LOCKED' = 'LOCKED';
+      let status: "ACTIVE" | "COMPLETED" | "LOCKED" = "LOCKED";
       if (entry) {
-        status = entry.isCompleted ? 'COMPLETED' : 'ACTIVE';
+        status = entry.isCompleted ? "COMPLETED" : "ACTIVE";
       } else {
-        // Pool 1 is active if user has a plan. Pool 2/3 active if previous is completed.
-        if (pool.id === 1 && dbUser.planId) status = 'ACTIVE';
-        if (pool.id > 1) {
-          const prevEntry = dbUser.poolEntries.find((e: any) => e.poolId === pool.id - 1);
-          if (prevEntry?.isCompleted) status = 'ACTIVE';
+        if (String(pool.id) === "1" && dbUser.planId) status = "ACTIVE";
+        if (Number(pool.id) > 1) {
+          const prevEntry = poolEntries.find((e: any) => String(e.poolId) === String(Number(pool.id) - 1));
+          if (prevEntry?.isCompleted) status = "ACTIVE";
         }
       }
 
       return {
         poolId: pool.id,
         name: pool.name,
-        entryFee: pool.entryFee.toString(),
+        entryFee: String(pool.entryFee ?? 0),
         status,
         level1Count: l1,
         level2Count: l2,
         level3Count: l3,
         totalEarned: poolEarned.toFixed(2),
-        isCurrent: entry && !entry.isCompleted
+        isCurrent: entry && !entry.isCompleted,
       };
     });
 
-    const currentEntry = dbUser.poolEntries.find((e: any) => !e.isCompleted) || dbUser.poolEntries[dbUser.poolEntries.length - 1];
+    const currentEntry = poolEntries.find((e: any) => !e.isCompleted) || poolEntries[poolEntries.length - 1];
+    const poolEntry = currentEntry;
 
-    // Calculate filled members (3x3 logic)
     let filledCount = 0;
     if (poolEntry) {
-      filledCount += poolEntry.children.length;
-      poolEntry.children.forEach((c1: any) => {
-        filledCount += c1.children.length;
-        c1.children.forEach((c2: any) => {
-          filledCount += c2.children.length;
+      filledCount += poolEntry.children?.length ?? 0;
+      (poolEntry.children || []).forEach((c1: any) => {
+        filledCount += c1.children?.length ?? 0;
+        (c1.children || []).forEach((c2: any) => {
+          filledCount += c2.children?.length ?? 0;
         });
       });
     }
@@ -199,14 +170,14 @@ export async function GET() {
       poolIncome: poolIncome.toFixed(2),
       milestoneIncome: milestoneIncome.toFixed(2),
       milestones: milestoneProgress,
-      levelEarnings: levelEarnings.map(v => v.toFixed(2)),
+      levelEarnings: levelEarnings.map((v) => v.toFixed(2)),
       allPools: allPoolsData,
       autoPool: {
-        name: currentEntry?.pool.name || "Pool 1",
-        filled: allPoolsData.find(p => p.poolId === (currentEntry?.poolId || 1))?.level1Count || 0,
+        name: currentEntry?.poolId ? allPoolConfigs.find((p: any) => String(p.id) === String(currentEntry.poolId))?.name ?? "Pool 1" : "Pool 1",
+        filled: allPoolsData.find((p: any) => String(p.poolId) === String(currentEntry?.poolId || 1))?.level1Count ?? 0,
         total: 3,
       },
-      recentTransactions: transactions.map((t) => ({
+      recentTransactions: transactions.map((t: any) => ({
         ...t,
         amount: Number(t.amount).toFixed(2),
       })),
