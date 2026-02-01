@@ -93,7 +93,25 @@ export const firestore = db;
 export const adminApp = app;
 export const adminAuth = getAuth(app);
 
-export async function getUserByFirebaseUid(uid: string) {
+export type FirestoreUser = {
+  id: string;
+  firebaseUid?: string;
+  email?: string;
+  name?: string;
+  photoURL?: string;
+  role?: string;
+  referralCode?: string;
+  referredById?: string | null;
+  planId?: string | null;
+  walletBalance?: number;
+  isBlocked?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+export type FirestorePlan = { id: string; name?: string; price?: number; levelCount?: number; levelPercentages?: string };
+
+export async function getUserByFirebaseUid(uid: string): Promise<FirestoreUser | null> {
   const cacheKey = getCacheKey("users", uid);
   const cached = getCached(cacheKey);
   if (cached) return cached;
@@ -102,7 +120,7 @@ export async function getUserByFirebaseUid(uid: string) {
     const snapshot = await db.collection("users").where("firebaseUid", "==", uid).limit(1).get();
     if (snapshot.empty) return null;
 
-    const user = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+    const user = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as FirestoreUser;
     setCache(cacheKey, user);
     return user;
   } catch (error: any) {
@@ -115,7 +133,7 @@ export async function getUserByFirebaseUid(uid: string) {
   }
 }
 
-export async function getUserById(id: string) {
+export async function getUserById(id: string): Promise<FirestoreUser | null> {
   const cacheKey = getCacheKey("users", id);
   const cached = getCached(cacheKey);
   if (cached) return cached;
@@ -123,12 +141,12 @@ export async function getUserById(id: string) {
   const doc = await db.collection("users").doc(id).get();
   if (!doc.exists) return null;
 
-  const user = { id: doc.id, ...doc.data() };
+  const user = { id: doc.id, ...doc.data() } as FirestoreUser;
   setCache(cacheKey, user);
   return user;
 }
 
-export async function getUserByReferralCode(code: string) {
+export async function getUserByReferralCode(code: string): Promise<FirestoreUser | null> {
   const cacheKey = getCacheKey("users", undefined, `referralCode:${code}`);
   const cached = getCached(cacheKey);
   if (cached) return cached;
@@ -137,7 +155,7 @@ export async function getUserByReferralCode(code: string) {
     const snapshot = await db.collection("users").where("referralCode", "==", code).limit(1).get();
     if (snapshot.empty) return null;
 
-    const user = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+    const user = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as FirestoreUser;
     setCache(cacheKey, user);
     return user;
   } catch (error) {
@@ -146,7 +164,7 @@ export async function getUserByReferralCode(code: string) {
   }
 }
 
-export async function getUserByEmail(email: string) {
+export async function getUserByEmail(email: string): Promise<FirestoreUser | null> {
   const cacheKey = getCacheKey("users", undefined, `email:${email}`);
   const cached = getCached(cacheKey);
   if (cached) return cached;
@@ -155,7 +173,7 @@ export async function getUserByEmail(email: string) {
     const snapshot = await db.collection("users").where("email", "==", email).limit(1).get();
     if (snapshot.empty) return null;
 
-    const user = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+    const user = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as FirestoreUser;
     setCache(cacheKey, user);
     return user;
   } catch (error) {
@@ -180,7 +198,7 @@ async function generateUniqueReferralCode(): Promise<string> {
   throw new Error("Failed to generate unique referral code after multiple attempts");
 }
 
-export async function createUser(data: any) {
+export async function createUser(data: any): Promise<FirestoreUser> {
   try {
     if (data.email) {
       const existingUser = await getUserByEmail(data.email);
@@ -218,7 +236,7 @@ export async function createUser(data: any) {
       invalidateCache(`referrals:${data.referredById}:`);
     }
     
-    return { id: docRef.id, ...data, walletBalance: 0, createdAt: now, updatedAt: now };
+    return { id: docRef.id, ...data, walletBalance: 0, createdAt: now, updatedAt: now } as FirestoreUser;
   } catch (error: any) {
     if (error?.code === 5 || error?.code === "NOT_FOUND") {
       const errorMsg = "Firestore database not found. Please create a Native mode database in Firebase Console: https://console.firebase.google.com";
@@ -366,26 +384,26 @@ export async function updateWalletBalance(id: string, amount: number, operation:
   invalidateCache("users:");
 }
 
-export async function getPlans(): Promise<any[]> {
+export async function getPlans(): Promise<FirestorePlan[]> {
   const cacheKey = getCacheKey("plans");
   const cached = getCached<any[]>(cacheKey);
   if (cached) return cached;
 
   const snapshot = await db.collection("plans").get();
-  const plans = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  const plans = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as FirestorePlan));
   setCache(cacheKey, plans);
   return plans;
 }
 
-export async function getPlan(id: string) {
+export async function getPlan(id: string): Promise<FirestorePlan | null> {
   const cacheKey = getCacheKey("plans", id);
-  const cached = getCached(cacheKey);
+  const cached = getCached<FirestorePlan>(cacheKey);
   if (cached) return cached;
 
   const doc = await db.collection("plans").doc(id).get();
   if (!doc.exists) return null;
 
-  const plan = { id: doc.id, ...doc.data() };
+  const plan = { id: doc.id, ...doc.data() } as FirestorePlan;
   setCache(cacheKey, plan);
   return plan;
 }
@@ -721,11 +739,11 @@ export async function createOttSubscription(data: {
   return { id: docRef.id, ...data, status: data.status ?? "PENDING", createdAt: now, updatedAt: now };
 }
 
-export async function getFirstAdminUser(): Promise<any | null> {
+export async function getFirstAdminUser(): Promise<FirestoreUser | null> {
   const snapshot = await db.collection("users").where("role", "==", "ADMIN").limit(1).get();
   if (snapshot.empty) return null;
   const d = snapshot.docs[0];
-  return { id: d.id, ...d.data() };
+  return { id: d.id, ...d.data() } as FirestoreUser;
 }
 
 export async function countUsersByReferredById(referredById: string): Promise<number> {

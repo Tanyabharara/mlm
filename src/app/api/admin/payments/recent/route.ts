@@ -11,10 +11,9 @@ export async function GET(req: NextRequest) {
     const paymentsWithUser = await Promise.all(
       payments.map(async (p: any) => {
         const user = p.userId ? await getUserById(p.userId) : null;
-        const u = user as { name?: string; email?: string } | null;
         return {
           ...p,
-          user: u ? { name: u.name, email: u.email } : null,
+          user: user ? { name: user.name, email: user.email } : null,
         };
       })
     );

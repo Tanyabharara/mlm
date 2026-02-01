@@ -16,8 +16,8 @@ async function getUserStats(userId: string) {
   return {
     referralCount,
     planName: plan?.name || "No Plan",
-    balance: String((info as any)?.walletBalance ?? 0),
-    joinedAt: (info as any)?.createdAt,
+    balance: String(info?.walletBalance ?? 0),
+    joinedAt: info?.createdAt,
   };
 }
 

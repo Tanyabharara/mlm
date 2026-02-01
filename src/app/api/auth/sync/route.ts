@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    let user: any = await getUserByFirebaseUid(verifiedUid);
+    let user = await getUserByFirebaseUid(verifiedUid);
 
     if (!user) {
       const newCode = await generateUniqueReferralCode();
@@ -55,19 +55,19 @@ export async function POST(req: Request) {
       const effectiveCode = providedCode && typeof providedCode === "string" ? providedCode.trim() : null;
 
       if (effectiveCode && effectiveCode.toUpperCase() !== "OTTFY_ADMIN") {
-        const referrer = await getUserByReferralCode(effectiveCode.toUpperCase()) as { id: string } | null;
-        if (referrer && referrer.id !== (user as { id: string }).id) {
+        const referrer = await getUserByReferralCode(effectiveCode.toUpperCase());
+        if (referrer && referrer.id !== user.id) {
           referrerId = referrer.id;
         }
       }
 
       if (!referrerId) {
-        const admin = await getFirstAdminUser() as { id: string } | null;
+        const admin = await getFirstAdminUser();
         if (admin) referrerId = admin.id;
       }
 
       if (referrerId) {
-        user = await updateUser((user as { id: string }).id, { referredById: referrerId });
+        user = await updateUser(user.id, { referredById: referrerId });
       }
     }
 
