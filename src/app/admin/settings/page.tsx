@@ -11,7 +11,8 @@ import {
     DollarSign,
     Loader2,
     CheckCircle2,
-    AlertCircle
+    AlertCircle,
+    FlaskConical
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { notFound } from "next/navigation";
@@ -30,7 +31,8 @@ export default function AdminSettings() {
         L3: 1,
         L4_10: 0.5,
         poolEntry: 100,
-        poolReward: 500
+        poolReward: 500,
+        sandboxMode: false
     });
 
     useEffect(() => {
@@ -48,7 +50,7 @@ export default function AdminSettings() {
         );
     }
 
-    if (userData?.role !== 'ADMIN' || userData?.email !== 'tanyabharara333@gmail.com') {
+    if (userData?.role !== 'ADMIN') {
         return notFound();
     }
 
@@ -130,6 +132,46 @@ export default function AdminSettings() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Developer / Sandbox Mode - MOVED TO TOP FOR VISIBILITY */}
+            <div className="bg-white dark:bg-[#1e1e2d] p-8 rounded-[40px] border-2 border-amber-500 shadow-xl space-y-8">
+                <div className="flex items-center justify-between gap-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center">
+                            <FlaskConical className="w-6 h-6 text-amber-500" />
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-black tracking-tight">Debug & Test Settings</h3>
+                            <p className="text-[10px] text-gray-500 font-medium">Control development and testing tools</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 bg-gray-50 dark:bg-gray-800 px-6 py-4 rounded-3xl border border-gray-100 dark:border-gray-700">
+                        <div className="text-right">
+                            <p className="text-sm font-bold">Sandbox Mode</p>
+                            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Enable Mock Payments</p>
+                        </div>
+                        <button
+                            onClick={() => setConfig({ ...config, sandboxMode: !config.sandboxMode })}
+                            className={`w-14 h-8 rounded-full transition-all flex items-center px-1 ${config.sandboxMode ? 'bg-amber-500' : 'bg-gray-300'}`}
+                        >
+                            <motion.div
+                                animate={{ x: config.sandboxMode ? 24 : 0 }}
+                                className="w-6 h-6 bg-white rounded-full shadow-sm"
+                            />
+                        </button>
+                    </div>
+                </div>
+
+                {config.sandboxMode && (
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3">
+                        <ShieldAlert className="w-5 h-5 text-amber-600" />
+                        <p className="text-[11px] text-amber-700 font-medium">
+                            <strong>Sandbox Mode is ACTIVE:</strong> Users can bypass real BSC payments. Use only for testing.
+                        </p>
+                    </div>
+                )}
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Treasury Settings */}

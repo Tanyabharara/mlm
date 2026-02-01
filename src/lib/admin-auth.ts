@@ -7,11 +7,9 @@ export async function verifyAdminRequest(req: Request) {
 
   const user: any = await getUserByFirebaseUid(verifiedUid);
 
-  const MASTER_ADMIN = "tanyabharara333@gmail.com";
-
-  if (user?.role !== "ADMIN" || user?.email !== MASTER_ADMIN) {
+  if (user?.role !== "ADMIN") {
     if (user) {
-      console.warn(`Unauthorized access attempt by ${user.email}. Only ${MASTER_ADMIN} is allowed.`);
+      console.warn(`Unauthorized access attempt by ${user.email}. Role: ${user.role}`);
     }
     return null;
   }

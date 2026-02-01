@@ -8,7 +8,7 @@ let db: Firestore;
 if (!getApps().length) {
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const databaseId = process.env.FIREBASE_DATABASE_ID || "(default)";
-  
+
   const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
   let serviceAccount;
@@ -32,14 +32,14 @@ if (!getApps().length) {
   } else {
     app = initializeApp();
   }
-  
+
   const useEmulator = process.env.FIREBASE_EMULATOR_HOST;
   if (useEmulator) {
     process.env.FIRESTORE_EMULATOR_HOST = useEmulator;
   }
-  
+
   db = databaseId !== "(default)" ? getFirestore(app, databaseId) : getFirestore(app);
-  
+
   if (useEmulator) {
     db.settings({
       host: useEmulator,
@@ -50,9 +50,9 @@ if (!getApps().length) {
   app = getApps()[0];
   const databaseId = process.env.FIREBASE_DATABASE_ID || "(default)";
   const useEmulator = process.env.FIREBASE_EMULATOR_HOST;
-  
+
   db = databaseId !== "(default)" ? getFirestore(app, databaseId) : getFirestore(app);
-  
+
   if (useEmulator) {
     db.settings({
       host: useEmulator,
@@ -185,7 +185,7 @@ export async function getUserByEmail(email: string): Promise<FirestoreUser | nul
 async function generateUniqueReferralCode(): Promise<string> {
   let attempts = 0;
   const maxAttempts = 10;
-  
+
   while (attempts < maxAttempts) {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     const existing = await getUserByReferralCode(code);
@@ -194,7 +194,7 @@ async function generateUniqueReferralCode(): Promise<string> {
     }
     attempts++;
   }
-  
+
   throw new Error("Failed to generate unique referral code after multiple attempts");
 }
 
@@ -206,14 +206,14 @@ export async function createUser(data: any): Promise<FirestoreUser> {
         throw new Error(`User with email ${data.email} already exists`);
       }
     }
-    
+
     if (data.firebaseUid) {
       const existingUser = await getUserByFirebaseUid(data.firebaseUid);
       if (existingUser) {
         throw new Error(`User with Firebase UID ${data.firebaseUid} already exists`);
       }
     }
-    
+
     if (!data.referralCode) {
       data.referralCode = await generateUniqueReferralCode();
     } else {
@@ -222,7 +222,7 @@ export async function createUser(data: any): Promise<FirestoreUser> {
         throw new Error(`Referral code ${data.referralCode} already exists`);
       }
     }
-    
+
     const now = new Date();
     const docRef = await db.collection("users").add({
       ...data,
@@ -231,11 +231,11 @@ export async function createUser(data: any): Promise<FirestoreUser> {
       updatedAt: now,
     });
     invalidateCache("users:");
-    
+
     if (data.referredById) {
       invalidateCache(`referrals:${data.referredById}:`);
     }
-    
+
     return { id: docRef.id, ...data, walletBalance: 0, createdAt: now, updatedAt: now } as FirestoreUser;
   } catch (error: any) {
     if (error?.code === 5 || error?.code === "NOT_FOUND") {
@@ -254,12 +254,12 @@ export async function createUser(data: any): Promise<FirestoreUser> {
 
 export async function ensureUserExists(uid: string, userData?: { email?: string; name?: string; photoURL?: string }) {
   let user = await getUserByFirebaseUid(uid);
-  
+
   if (!user) {
     let email = userData?.email;
     let name = userData?.name;
     let photoURL = userData?.photoURL;
-    
+
     if (!email || !name) {
       try {
         const auth = getAuth(app);
@@ -271,11 +271,11 @@ export async function ensureUserExists(uid: string, userData?: { email?: string;
         console.warn("Could not fetch user from Firebase Auth:", error);
       }
     }
-    
+
     if (!email) {
       email = `${uid}@temp.com`;
     }
-    
+
     if (email && email !== `${uid}@temp.com`) {
       const existingUserByEmail = await getUserByEmail(email);
       if (existingUserByEmail) {
@@ -285,7 +285,7 @@ export async function ensureUserExists(uid: string, userData?: { email?: string;
         throw new Error(`Email ${email} is already associated with another account`);
       }
     }
-    
+
     try {
       user = await createUser({
         firebaseUid: uid,
@@ -320,7 +320,7 @@ export async function ensureUserExists(uid: string, userData?: { email?: string;
       throw error;
     }
   }
-  
+
   return user;
 }
 
@@ -329,47 +329,47 @@ export async function updateUser(id: string, data: any) {
   if (!user) {
     throw new Error("User not found");
   }
-  
+
   const userData = user as any;
-  
+
   if (data.email && data.email !== userData.email) {
     const existingUser = await getUserByEmail(data.email);
     if (existingUser && (existingUser as any).id !== id) {
       throw new Error(`Email ${data.email} is already associated with another account`);
     }
   }
-  
+
   if (data.referralCode && data.referralCode !== userData.referralCode) {
     const existingUser = await getUserByReferralCode(data.referralCode);
     if (existingUser && (existingUser as any).id !== id) {
       throw new Error(`Referral code ${data.referralCode} is already in use`);
     }
   }
-  
+
   if (data.referredById && userData.referredById && data.referredById !== userData.referredById) {
     throw new Error("User can only be referred by one person. Referrer cannot be changed.");
   }
-  
+
   await db.collection("users").doc(id).update({
     ...data,
     updatedAt: new Date(),
   });
   invalidateCache("users:");
-  
+
   if (data.referredById) {
     invalidateCache(`referrals:${data.referredById}:`);
   }
-  
+
   if (userData.referredById && data.referredById !== userData.referredById) {
     invalidateCache(`referrals:${userData.referredById}:`);
   }
-  
+
   return getUserById(id);
 }
 
 export async function updateWalletBalance(id: string, amount: number, operation: "increment" | "set" = "increment") {
   const userRef = db.collection("users").doc(id);
-  
+
   if (operation === "increment") {
     await userRef.update({
       walletBalance: FieldValue.increment(amount),
@@ -728,6 +728,7 @@ export async function createOttSubscription(data: {
   password?: string;
   link?: string;
   status?: string;
+  paymentIntentId?: string;
 }): Promise<any> {
   const now = new Date();
   const docRef = await db.collection("ottSubscriptions").add({
@@ -738,6 +739,27 @@ export async function createOttSubscription(data: {
   });
   return { id: docRef.id, ...data, status: data.status ?? "PENDING", createdAt: now, updatedAt: now };
 }
+
+export async function getOttSubscriptionById(id: string): Promise<any | null> {
+  const doc = await db.collection("ottSubscriptions").doc(id).get();
+  if (!doc.exists) return null;
+  const subscription = { id: doc.id, ...doc.data() } as any;
+
+  // Try to join with payment intent if it exists
+  if (subscription.paymentIntentId) {
+    subscription.paymentIntent = await getPaymentIntent(subscription.paymentIntentId);
+  }
+
+  return subscription;
+}
+
+export async function updateOttSubscription(id: string, data: any): Promise<void> {
+  await db.collection("ottSubscriptions").doc(id).update({
+    ...data,
+    updatedAt: new Date(),
+  });
+}
+
 
 export async function getFirstAdminUser(): Promise<FirestoreUser | null> {
   const snapshot = await db.collection("users").where("role", "==", "ADMIN").limit(1).get();

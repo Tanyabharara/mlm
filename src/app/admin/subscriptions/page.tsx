@@ -71,7 +71,7 @@ export default function AdminSubscriptionsPage() {
         );
     }
 
-    if (userData?.role !== 'ADMIN' || userData?.email !== 'tanyabharara333@gmail.com') {
+    if (userData?.role !== 'ADMIN') {
         return notFound();
     }
 

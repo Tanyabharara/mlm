@@ -1,267 +1,220 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { motion, AnimatePresence } from "framer-motion";
+
+import React from "react";
 import {
-    ChevronRight,
-    Users,
-    TrendingUp,
-    Lock,
-    CheckCircle2,
-    Clock,
-    Network,
+    ShieldCheck,
     ArrowRight,
-    Search
+    Zap,
+    Info,
+    AlertTriangle,
+    TrendingUp,
+    Clock,
+    Gem,
+    Users,
+    ChevronDown,
+    XCircle,
+    CheckCircle2,
+    DollarSign
 } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function AutoPoolPage() {
-    const { user } = useAuth() as any;
-    const [loading, setLoading] = useState(true);
-    const [data, setData] = useState<any>(null);
-    const [activePoolId, setActivePoolId] = useState(1);
+    return (
+        <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-12 animate-in fade-in duration-700 pb-24">
+            {/* Header Area */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-[#6C63FF]/10 text-[#6C63FF] rounded-lg flex items-center justify-center">
+                            <Zap size={18} fill="currentColor" />
+                        </div>
+                        <h1 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white uppercase font-outfit">
+                            Auto Pool Income Plan
+                        </h1>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em]">
+                        Autonomous Financial Distribution · Managed Assets
+                    </p>
+                </div>
+                <div className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest hidden md:flex items-center gap-2">
+                    <ShieldCheck size={14} /> System Verified
+                </div>
+            </div>
 
-    const fetchData = async () => {
-        try {
-            const token = await user.getIdToken();
-            const res = await fetch("/api/user/autopool", {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const json = await res.json();
-            setData(json);
+            {/* Income Card Description Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="lg:col-span-12 bg-white dark:bg-slate-900 rounded-[48px] p-8 md:p-14 border border-gray-100 dark:border-white/5 shadow-2xl space-y-12 overflow-hidden relative"
+                >
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-[#6C63FF]/5 rounded-full -mr-32 -mt-32 blur-[80px] pointer-events-none" />
 
-            // Set active pool to current progress
-            const current = json.pools.find((p: any) => p.status === 'ACTIVE');
-            if (current) setActivePoolId(current.id);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-16 items-start">
+                        {/* Information List */}
+                        <div className="space-y-8">
+                            <div className="space-y-3">
+                                <span className="px-3 py-1 bg-[#6C63FF]/10 text-[#6C63FF] rounded-full text-[9px] font-black uppercase tracking-widest border border-[#6C63FF]/20">
+                                    CORE MECHANICS
+                                </span>
+                                <h2 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
+                                    Dynamic Global <br /><span className="text-[#6C63FF]">Reward Distribution</span>
+                                </h2>
+                            </div>
 
-    useEffect(() => {
-        if (user) fetchData();
-    }, [user]);
+                            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                                <DescriptionItem text="Auto Pool is time-based and company-managed" />
+                                <DescriptionItem text="Users are auto-placed after plan activation" />
+                                <DescriptionItem text="Income is generated automatically" />
+                                <DescriptionItem text="No manual work required" />
+                                <DescriptionItem text="No referral dependency" />
+                                <DescriptionItem text="Pool structure and placements are not visible" />
+                                <DescriptionItem text="Earnings credited directly to wallet when applicable" />
+                            </ul>
+                        </div>
 
-    if (loading) return (
-        <div className="flex h-full items-center justify-center p-20">
-            <div className="w-10 h-10 border-2 border-[#6C63FF] border-t-transparent rounded-full animate-spin"></div>
+                        {/* Visual Rules Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <RewardCard level="LEVEL 1" percentage="10%" label="Initial Yield" color="#6C63FF" />
+                            <RewardCard level="LEVEL 2" percentage="20%" label="Growth Phase" color="#4CAF50" />
+                            <RewardCard level="LEVEL 3" percentage="30%" label="Peak Maturity" color="#FFD700" />
+
+                            <div className="md:col-span-3 p-6 bg-slate-50 dark:bg-white/5 rounded-[32px] border border-gray-100 dark:border-white/5 space-y-4">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <TrendingUp size={14} /> System Logic
+                                </p>
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
+                                    After completion, users are <span className="text-[#6C63FF] font-bold">automatically shifted</span> to the next pool tier. This execution is handled entirely by the systemic arbiter logic.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+            </div>
+
+            {/* Comparison Table Section */}
+            <div className="space-y-6">
+                <div className="flex items-center justify-between px-2">
+                    <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 font-outfit">Pool Income Tiers</h3>
+                    <div className="flex items-center gap-2 text-[10px] font-black text-[#4CAF50] uppercase tracking-widest bg-[#4CAF50]/10 px-3 py-1 rounded-full">
+                        <DollarSign size={12} /> Live Settlement Estimates
+                    </div>
+                </div>
+
+                <div className="overflow-hidden bg-white dark:bg-slate-900 rounded-[48px] border border-gray-100 dark:border-white/5 shadow-xl">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="border-b border-gray-50 dark:border-white/5">
+                                <th className="p-8 text-[11px] font-black uppercase tracking-widest text-slate-400">Pool Tier</th>
+                                <th className="p-8 text-[11px] font-black uppercase tracking-widest text-slate-400">Entry Stake</th>
+                                <th className="p-8 text-[11px] font-black uppercase tracking-widest text-slate-400">L1 - L2 - L3 Rewards</th>
+                                <th className="p-8 text-[11px] font-black uppercase tracking-widest text-slate-400">Total Net Yield</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 dark:divide-white/5">
+                            {[
+                                { id: 1, fee: 1, l1: 0.3, l2: 1.8, l3: 8.1, total: 10.2, next: "Auto Shift to Pool 2" },
+                                { id: 2, fee: 10, l1: 3, l2: 18, l3: 81, total: 102, next: "Auto Shift to Pool 3" },
+                                { id: 3, fee: 100, l1: 30, l2: 180, l3: 810, total: 1020, next: "Ecosystem Mastery" }
+                            ].map((pool) => (
+                                <tr key={pool.id} className="group hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                                    <td className="p-8">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-slate-50 dark:bg-white/5 rounded-2xl flex items-center justify-center group-hover:bg-[#6C63FF]/10 group-hover:text-[#6C63FF] transition-colors">
+                                                <Gem size={20} />
+                                            </div>
+                                            <div>
+                                                <p className="font-black text-slate-900 dark:text-white font-outfit uppercase tracking-tighter text-lg">Auto Pool {pool.id}</p>
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{pool.next}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="p-8">
+                                        <p className="font-black text-slate-500 text-xl font-outfit">${pool.fee}</p>
+                                    </td>
+                                    <td className="p-8">
+                                        <div className="flex items-center gap-4">
+                                            <RewardPill amount={pool.l1} level="L1" />
+                                            <ArrowRight size={14} className="text-slate-200" />
+                                            <RewardPill amount={pool.l2} level="L2" />
+                                            <ArrowRight size={14} className="text-slate-200" />
+                                            <RewardPill amount={pool.l3} level="L3" />
+                                        </div>
+                                    </td>
+                                    <td className="p-8">
+                                        <p className="font-black text-[#4CAF50] text-2xl font-outfit tracking-tighter group-hover:scale-105 transition-transform origin-left">
+                                            ${pool.total.toLocaleString()}
+                                        </p>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* RESTRICTION WARNING - GHOST MODE */}
+            <div className="bg-amber-50 dark:bg-amber-500/5 rounded-[40px] p-10 border border-amber-100 dark:border-amber-500/10 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-8 opacity-5">
+                    <AlertTriangle size={120} className="text-amber-500" />
+                </div>
+                <div className="w-14 h-14 bg-amber-500 rounded-3xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-amber-500/20">
+                    <XCircle size={32} />
+                </div>
+                <div className="space-y-4 relative z-10">
+                    <h4 className="text-xs font-black uppercase tracking-[0.2em] text-amber-600">Confidentiality Protocol Active</h4>
+                    <p className="text-sm font-medium text-amber-700/80 leading-relaxed max-w-2xl">
+                        To maintain system integrity and global synchronization, all <span className="font-black uppercase">Tree Views, Position Info, Level Progress, and Entry/Exit Controls</span> are intentionally restricted. Participation is managed entirely by the autonomous executive logic.
+                    </p>
+                </div>
+            </div>
+
+            {/* Footer Rules List */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-2 font-medium text-slate-400 text-xs">
+                <div className="flex gap-4">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#6C63FF] mt-1.5 shrink-0" />
+                    <p>Pool execution is governed by a first-come first-served global queue timestamp.</p>
+                </div>
+                <div className="flex gap-4">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#6C63FF] mt-1.5 shrink-0" />
+                    <p>Earnings are automatically credited to the unified settlement wallet upon node fulfillment.</p>
+                </div>
+            </div>
         </div>
     );
+}
 
-    const activePool = data?.pools.find((p: any) => p.id === activePoolId);
-
+function DescriptionItem({ text }: { text: string }) {
     return (
-        <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-700">
-            {/* 1. Header & Navigation */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1">
-                    <h1 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white">Auto Pool Status Dashboard</h1>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Time-based global referral system · Sequential filling</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="px-3 py-1.5 bg-[#4CAF50]/10 text-[#4CAF50] rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-[#4CAF50]/20">
-                        <CheckCircle2 size={12} /> Active in {activePool?.name}
-                    </div>
-                </div>
+        <li className="flex items-start gap-3 group">
+            <div className="w-5 h-5 bg-[#4CAF50]/10 text-[#4CAF50] rounded-full flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
+                <CheckCircle2 size={14} />
             </div>
+            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                {text}
+            </p>
+        </li>
+    );
+}
 
-            {/* 2. Pool Selectors */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {data?.pools.map((pool: any) => (
-                    <motion.button
-                        key={pool.id}
-                        whileHover={{ y: -2 }}
-                        onClick={() => pool.status !== 'LOCKED' && setActivePoolId(pool.id)}
-                        className={`p-6 rounded-[32px] border transition-all text-left relative overflow-hidden group ${activePoolId === pool.id
-                            ? 'bg-white dark:bg-slate-900 border-[#6C63FF] shadow-xl'
-                            : 'bg-slate-50 dark:bg-white/5 border-transparent hover:border-slate-200'
-                            } ${pool.status === 'LOCKED' ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
-                    >
-                        <div className="relative z-10 flex justify-between items-start mb-4">
-                            <div>
-                                <p className={`text-[10px] font-black uppercase tracking-widest ${activePoolId === pool.id ? 'text-[#6C63FF]' : 'text-slate-400'}`}>
-                                    {pool.name}
-                                </p>
-                                <h3 className="text-2xl font-black text-slate-900 dark:text-white">${Number(pool.entryFee)}</h3>
-                            </div>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${pool.status === 'COMPLETED' ? 'bg-[#4CAF50]/10 text-[#4CAF50]' :
-                                pool.status === 'ACTIVE' ? 'bg-[#6C63FF]/10 text-[#6C63FF]' :
-                                    'bg-slate-200 text-slate-400'
-                                }`}>
-                                {pool.status === 'COMPLETED' ? <CheckCircle2 size={16} /> :
-                                    pool.status === 'ACTIVE' ? <TrendingUp size={16} /> :
-                                        <Lock size={16} />}
-                            </div>
-                        </div>
-                        {pool.status === 'ACTIVE' && (
-                            <div className="h-1 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-                                <motion.div
-                                    className="h-full bg-[#6C63FF]"
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${(pool.stats.l1 / 3) * 100}%` }}
-                                />
-                            </div>
-                        )}
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-3">
-                            {pool.status === 'COMPLETED' ? 'Upgrade successfully' :
-                                pool.status === 'LOCKED' ? 'Entry Locked' :
-                                    `Current Level ${pool.stats.l1 >= 3 ? (pool.stats.l2 >= 9 ? '3' : '2') : '1'} of 3`}
-                        </p>
-                    </motion.button>
-                ))}
+function RewardCard({ level, percentage, label, color }: any) {
+    return (
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/10 p-8 rounded-[40px] text-center space-y-3 shadow-xl hover:translate-y-[-4px] transition-all">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{level}</p>
+            <h4 className="text-5xl font-black font-outfit" style={{ color }}>{percentage}</h4>
+            <div className="pt-2">
+                <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{label}</p>
             </div>
+        </div>
+    );
+}
 
-            {/* 3. Main Analytics Content */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* Visual Tree Card */}
-                <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-[40px] p-8 md:p-12 border border-gray-100 dark:border-white/5 shadow-xl space-y-12">
-                    <div className="flex justify-between items-start">
-                        <div className="space-y-1">
-                            <h3 className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white">Member Node Structure</h3>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Global Matrix Hierarchy · {activePool?.name}</p>
-                        </div>
-                        <div className="px-3 py-1 bg-slate-50 dark:bg-white/5 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                            <Clock size={12} /> Live Status
-                        </div>
-                    </div>
-
-                    {/* Matrix Tree Visualization */}
-                    <div className="py-10 flex flex-col items-center gap-12">
-                        {/* Root: YOU */}
-                        <div className="relative">
-                            <div className="w-14 h-14 bg-[#6C63FF] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-[#6C63FF]/30 relative z-10 border-4 border-white dark:border-slate-900">
-                                <Users size={24} />
-                            </div>
-                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-black text-[#6C63FF] uppercase tracking-widest">YOU</div>
-
-                            {/* Connection Lines (Down to L1) */}
-                            <svg className="absolute top-14 left-1/2 -translate-x-1/2 w-64 h-12 overflow-visible pointer-events-none opacity-20">
-                                <path d="M 32 0 L 0 45" stroke="#6C63FF" strokeWidth="2" fill="none" />
-                                <path d="M 32 0 L 32 45" stroke="#6C63FF" strokeWidth="2" fill="none" />
-                                <path d="M 32 0 L 64 45" stroke="#6C63FF" strokeWidth="2" fill="none" />
-                            </svg>
-                        </div>
-
-                        {/* Level 1 Nodes */}
-                        <div className="flex justify-between w-full max-w-lg">
-                            {[0, 1, 2].map((idx) => {
-                                const isFilled = activePool?.stats.l1 > idx;
-                                return (
-                                    <div key={idx} className="relative">
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isFilled ? 'bg-[#4CAF50] text-white' : 'bg-slate-100 dark:bg-white/5 text-slate-300'
-                                            } relative z-10 border-4 border-white dark:border-slate-900`}>
-                                            <Users size={16} />
-                                        </div>
-                                        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[8px] font-black text-slate-400 uppercase tracking-widest">L1-N{idx + 1}</div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        {/* Progress Details */}
-                        <div className="w-full bg-slate-50 dark:bg-white/5 rounded-[32px] p-6 space-y-4">
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex -space-x-2">
-                                        {[...Array(5)].map((_, i) => (
-                                            <div key={i} className={`w-5 h-5 rounded-full border-2 border-white dark:border-slate-900 ${i < activePool?.stats.l1 ? 'bg-[#4CAF50]' : 'bg-slate-200'}`} />
-                                        ))}
-                                    </div>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">
-                                        L{activePool?.stats.l1 >= 3 ? '2' : '1'}: {activePool?.stats.l1}/3 Members Filled
-                                    </p>
-                                </div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-[#6C63FF]">
-                                    {Math.round((activePool?.stats.l1 / 3) * 100)}% Yield per node
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Main Tree Visualization is already above, this was the footer of that card */}
-                </div>
-
-                {/* Sidebar Stats */}
-                <div className="lg:col-span-4 space-y-8">
-                    {/* Income Breakdown Card */}
-                    <div className="bg-white dark:bg-slate-900 rounded-[40px] p-8 border border-gray-100 dark:border-white/5 shadow-xl space-y-8">
-                        <div className="space-y-1">
-                            <h3 className="text-xl font-black tracking-tighter text-slate-900 dark:text-white">Income Breakdown</h3>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-slate-400">Level-wise Earnings Model</p>
-                        </div>
-
-                        <div className="space-y-6">
-                            {[
-                                { level: 1, users: 3, percentage: 10, reward: (Number(activePool?.entryFee) * 0.10).toFixed(2) },
-                                { level: 2, users: 9, percentage: 20, reward: (Number(activePool?.entryFee) * 0.20).toFixed(2) },
-                                { level: 3, users: 27, percentage: 30, reward: (Number(activePool?.entryFee) * 0.30).toFixed(2) },
-                            ].map((row, i) => (
-                                <div key={i} className="flex justify-between items-center group">
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">Level {row.level} ({row.users} Nodes)</p>
-                                        <p className={`text-[10px] font-bold uppercase tracking-widest ${i === 0 ? 'text-[#6C63FF]' : 'text-slate-400 group-hover:text-slate-600'}`}>
-                                            {row.percentage}% Commission
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{row.users} x ${row.reward}</p>
-                                        <p className="text-lg font-black text-slate-900 dark:text-white">${(Number(row.reward) * row.users).toFixed(2)}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="p-6 bg-slate-50 dark:bg-[#6C63FF]/5 rounded-3xl border border-transparent dark:border-[#6C63FF]/20 flex justify-between items-center">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-[#6C63FF]">
-                                ${(Number(activePool?.entryFee) * 10.2).toFixed(2)}
-                            </p>
-                        </div>
-                        {activePool?.id === 2 && (
-                            <p className="text-[8px] text-center text-[#ff6b6b] font-black uppercase tracking-widest -mt-4">
-                                Includes $0.20 Company Maintenance Stake
-                            </p>
-                        )}
-                        <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-widest">Based on unique FIFO priority calculator</p>
-                    </div>
-
-                    {/* Recent Placements Card */}
-                    <div className="bg-white dark:bg-slate-900 rounded-[40px] p-8 border border-gray-100 dark:border-white/5 shadow-xl space-y-6">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-black tracking-tighter text-slate-900 dark:text-white uppercase">Recent Placements</h3>
-                            <button className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest">View All</button>
-                        </div>
-                        <div className="space-y-4">
-                            {[
-                                { title: 'New member added (L1-N1)', desc: '2 hours ago', val: `+$${(Number(activePool?.entryFee) * 0.3).toFixed(2)}`, color: 'green' },
-                                { title: 'Auto-upgrade to Pool 1', desc: 'Yesterday', val: '0', color: 'blue' },
-                                { title: 'Level 1 Complete', desc: '4 days ago', val: `+$${(Number(activePool?.entryFee) * 0.9).toFixed(2)}`, color: 'green' },
-                            ].map((item, i) => (
-                                <div key={i} className="flex justify-between items-center py-2">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-2 h-2 rounded-full ${item.color === 'green' ? 'bg-[#4CAF50]' : 'bg-[#6C63FF]'}`} />
-                                        <div>
-                                            <p className="text-[11px] font-black text-slate-900 dark:text-white leading-none mb-1 uppercase tracking-tight">{item.title}</p>
-                                            <p className="text-[8px] text-slate-400 font-bold uppercase">{item.desc}</p>
-                                        </div>
-                                    </div>
-                                    <p className={`text-xs font-black ${item.color === 'green' ? 'text-[#4CAF50]' : 'text-[#6C63FF]'}`}>{item.val}</p>
-                                </div>
-                            ))}
-                        </div>
-                        <button className="w-full py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 border border-slate-100 dark:border-white/5 rounded-2xl hover:bg-slate-50 transition-colors">
-                            View Full History
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* 4. Core Principle Footer */}
-            <div className="text-center py-8 space-y-2">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Core Principle</p>
-                <div className="flex items-center justify-center gap-2 text-xs font-black text-slate-900 dark:text-white tracking-widest uppercase">
-                    User Enters <ArrowRight size={12} /> System Places <ArrowRight size={12} /> Pool Fills <ArrowRight size={12} /> Income Distributes <ArrowRight size={12} /> Auto Upgrade
-                </div>
+function RewardPill({ amount, level }: { amount: number; level: string }) {
+    return (
+        <div className="flex flex-col items-center gap-1">
+            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{level}</span>
+            <div className="px-3 py-1 bg-slate-50 dark:bg-white/5 rounded-full border border-gray-100 dark:border-white/5 text-xs font-black text-slate-600 dark:text-slate-300">
+                ${amount}
             </div>
         </div>
     );

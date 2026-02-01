@@ -13,6 +13,7 @@ export async function getProducer() {
     if (!producer) {
         producer = kafka.producer();
         await producer.connect();
+        console.log("✅ Kafka Producer Connected");
     }
     return producer;
 }

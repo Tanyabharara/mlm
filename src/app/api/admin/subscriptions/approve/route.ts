@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminRequest } from "@/lib/admin-auth";
-import prisma from "@/lib/prisma";
+import {
+    getOttSubscriptionById,
+    updateOttSubscription
+} from "@/lib/firebase-db";
 import { finalizePayment } from "@/lib/blockchain";
 
 export async function POST(req: NextRequest) {
@@ -14,24 +17,18 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing subscription ID" }, { status: 400 });
         }
 
-        const subscription = await prisma.ottSubscription.findUnique({
-            where: { id: subscriptionId },
-            include: { paymentIntent: true }
-        });
+        const subscription = await getOttSubscriptionById(subscriptionId);
 
         if (!subscription) {
             return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
         }
 
         // 1. Mark Subscription as ACTIVE and store credentials
-        await prisma.ottSubscription.update({
-            where: { id: subscriptionId },
-            data: {
-                username,
-                password,
-                link,
-                status: 'ACTIVE'
-            }
+        await updateOttSubscription(subscriptionId, {
+            username,
+            password,
+            link,
+            status: 'ACTIVE'
         });
 
         // 2. If there's a linked payment, finalize it now

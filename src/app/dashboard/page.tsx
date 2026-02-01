@@ -258,10 +258,10 @@ export default function DashboardPage() {
                 <div className="bg-white dark:bg-slate-900 p-10 rounded-[48px] border border-gray-100 dark:border-white/5 shadow-premium flex flex-col justify-between space-y-8">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                            <div className="w-12 h-12 rounded-2xl bg-[#6C63FF]/10 flex items-center justify-center text-[#6C63FF]">
                                 <Activity size={24} />
                             </div>
-                            <h4 className="text-sm font-black font-outfit text-slate-900 dark:text-white uppercase tracking-wider">Auto Pool Rules</h4>
+                            <h4 className="text-sm font-black font-outfit text-slate-900 dark:text-white uppercase tracking-wider">Auto Pool Income Plan</h4>
                         </div>
                         <div className="px-2 py-1 bg-slate-100 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10 flex items-center gap-1.5 grayscale opacity-50">
                             <Zap size={10} fill="currentColor" />
@@ -270,18 +270,26 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="space-y-4">
-                        <div className="inline-block px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded-full text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border border-emerald-500/10">
-                            Bonus: Earn 10%, 20%, 30% Level Income based on pool activity.
-                        </div>
-                        <div className="space-y-4 pt-2">
-                            <RuleStep number="01" text="Pool rewards distributed based on global platform growth sequence." />
-                            <RuleStep number="02" text="Matrix structure automatically syncs reaching defined volume thresholds." />
-                            <RuleStep number="03" text="System maintains strict privacy of pool hierarchy to ensure fair distribution." />
+                        <div className="space-y-3 pt-2">
+                            {[
+                                "Auto Pool is time-based and company-managed",
+                                "Users are auto-placed after plan activation",
+                                "Income is generated automatically",
+                                "No manual work required",
+                                "No referral dependency",
+                                "Pool structure and placements are not visible",
+                                "Earnings credited directly to wallet"
+                            ].map((text, idx) => (
+                                <div key={idx} className="flex items-start gap-3">
+                                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-[#6C63FF] shrink-0" />
+                                    <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight leading-tight">{text}</p>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
-                    <Link href="/dashboard/autopool/rules" className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest text-right hover:underline">
-                        Full Auto Pool Rules 1.2
+                    <Link href="/dashboard/autopool" className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest text-right hover:underline flex items-center justify-end gap-2">
+                        View Plan Details <ArrowRight size={12} />
                     </Link>
                 </div>
             </div>

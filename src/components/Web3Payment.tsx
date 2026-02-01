@@ -19,6 +19,7 @@ export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdT
 
     useEffect(() => {
         setMounted(true);
+        console.log("Web3Payment mounted. Sandbox Mode:", process.env.NEXT_PUBLIC_SANDBOX_MODE);
     }, []);
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -120,8 +121,49 @@ export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdT
     if (!mounted) return null;
     if (!isConnected) return (
         <div className="flex flex-col items-center gap-4 py-6">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Connect your wallet to pay</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest text-white/50">Connect your wallet to pay</p>
             <ConnectButton label="Connect Wallet for Payment" />
+
+            {(adminConfig?.sandboxMode || String(process.env.NEXT_PUBLIC_SANDBOX_MODE) === "true") && (
+                <button
+                    onClick={async () => {
+                        try {
+                            setIsProcessing(true);
+                            const idToken = await onIdToken();
+                            const intentRes = await fetch('/api/web3/intent', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${idToken}`
+                                },
+                                body: JSON.stringify({
+                                    amount: customAmount || adminConfig?.planPrice || '600',
+                                    platform
+                                })
+                            });
+                            const { intent } = await intentRes.json();
+                            const fakeHash = `sandbox_${Math.random().toString(36).substring(2)}`;
+
+                            await fetch('/api/web3/purchase', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${idToken}`
+                                },
+                                body: JSON.stringify({ txHash: fakeHash, paymentIntentId: intent.id })
+                            });
+
+                            window.location.href = `/dashboard/payment/${intent.id}?tx=${fakeHash}`;
+                        } catch (err) {
+                            console.error(err);
+                            setIsProcessing(false);
+                        }
+                    }}
+                    className="w-full py-3 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-500/20 transition-all flex items-center justify-center gap-2"
+                >
+                    🧪 Simulate Payment (Sandbox)
+                </button>
+            )}
         </div>
     );
     if (!adminConfig) return <div className="p-4 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-[#6C63FF]" /></div>;
@@ -189,7 +231,7 @@ export default function Web3Payment({ onIdToken, amount: customAmount }: { onIdT
             </button>
 
             {/* Sandbox Simulation Button */}
-            {process.env.NEXT_PUBLIC_SANDBOX_MODE === "true" && (
+            {(adminConfig?.sandboxMode || String(process.env.NEXT_PUBLIC_SANDBOX_MODE) === "true") && (
                 <button
                     onClick={async () => {
                         try {

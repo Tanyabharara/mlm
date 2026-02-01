@@ -1,7 +1,17 @@
 import { ethers } from "ethers";
 import { getProducer, TOPICS } from "./kafka";
 import { distributeIncome } from "./income-engine";
-import prisma from "./prisma";
+import {
+  getAppConfig,
+  getPaymentIntent,
+  updatePaymentIntent,
+  createTransaction,
+  getUserById,
+  updateUser,
+  updateWalletBalance,
+  getPlans,
+  createPurchase
+} from "./firebase-db";
 
 const BSC_RPC_URL = process.env.BSC_RPC_URL || "https://bsc-dataseed.binance.org/";
 const USDT_CONTRACT = "0x55d398326f99059fF775485246999027B3197955";
@@ -11,20 +21,26 @@ const USDT_ABI = [
 ];
 
 async function getPlatformConfig() {
-  const config = await prisma.appConfig.findUnique({ where: { key: 'PLATFORM_CONFIG' } });
+  const config = await getAppConfig('PLATFORM_CONFIG');
   const envAddress = process.env.TREASURY_WALLET_ADDRESS;
 
-  if (!config) return {
+  if (!config || !config.value) return {
     treasuryAddress: envAddress || '0xYourTreasuryWalletAddressHere',
     planPrice: 600
   };
 
-  const parsed = JSON.parse(config.value);
-  return {
-    // Prefer DB address if it exists, otherwise fallback to ENV
-    treasuryAddress: parsed.treasuryAddress || envAddress || '0xYourTreasuryWalletAddressHere',
-    planPrice: parseFloat(parsed.planPrice || '600')
-  };
+  try {
+    const parsed = JSON.parse(config.value);
+    return {
+      treasuryAddress: parsed.treasuryAddress || envAddress || '0xYourTreasuryWalletAddressHere',
+      planPrice: parseFloat(parsed.planPrice || '600')
+    };
+  } catch (e) {
+    return {
+      treasuryAddress: envAddress || '0xYourTreasuryWalletAddressHere',
+      planPrice: 600
+    };
+  }
 }
 
 export async function verifyOnChain(txHash: string, paymentIntentId: string) {
@@ -32,9 +48,7 @@ export async function verifyOnChain(txHash: string, paymentIntentId: string) {
   const { treasuryAddress } = await getPlatformConfig();
 
   try {
-    const existingIntent = await prisma.paymentIntent.findUnique({
-      where: { id: paymentIntentId }
-    });
+    const existingIntent = await getPaymentIntent(paymentIntentId);
 
     if (!existingIntent || existingIntent.status === 'VERIFIED') return;
 
@@ -74,9 +88,10 @@ export async function verifyOnChain(txHash: string, paymentIntentId: string) {
       throw new Error(`Insufficient payment amount. Expected ${expectedAmount}, got ${amountInEth}`);
     }
 
-    await prisma.paymentIntent.update({
-      where: { id: paymentIntentId },
-      data: { txHash, status: 'PENDING', confirmations: Number(receipt.confirmations) }
+    await updatePaymentIntent(paymentIntentId, {
+      txHash,
+      status: 'PENDING',
+      confirmations: Number(receipt.confirmations)
     });
 
     // Settle immediately on 1 confirmation
@@ -86,65 +101,49 @@ export async function verifyOnChain(txHash: string, paymentIntentId: string) {
 
   } catch (error: any) {
     console.error('On-chain verification error:', error.message);
-    await prisma.paymentIntent.update({
-      where: { id: paymentIntentId },
-      data: { status: 'FAILED' }
-    });
+    await updatePaymentIntent(paymentIntentId, { status: 'FAILED' });
   }
 }
 
 export async function finalizePayment(paymentIntentId: string, txHash: string, amount: number) {
-  const intent = await prisma.paymentIntent.findUnique({
-    where: { id: paymentIntentId },
-    include: { user: true }
-  });
+  const intent = await getPaymentIntent(paymentIntentId);
   if (!intent || intent.status === 'VERIFIED') return;
 
   // 1. Mark Payment as Verified
-  await prisma.paymentIntent.update({
-    where: { id: paymentIntentId },
-    data: { status: 'VERIFIED', confirmations: 12 }
-  });
+  await updatePaymentIntent(paymentIntentId, { status: 'VERIFIED', confirmations: 12 });
 
   // 2. Log Deposit Transaction
-  await prisma.transaction.create({
-    data: {
-      userId: intent.userId,
-      amount: amount,
-      type: 'CREDIT',
-      category: 'DEPOSIT',
-      description: `Wallet Deposit (TX: ${txHash.substring(0, 10)}...)`,
-      txHash: txHash
-    }
+  await createTransaction({
+    userId: intent.userId,
+    amount: amount,
+    type: 'CREDIT',
+    category: 'DEPOSIT',
+    description: `Wallet Deposit (TX: ${txHash.substring(0, 10)}...)`,
+    txHash: txHash
   });
 
   // 3. Update User Wallet Balance
-  const updatedUser = await prisma.user.update({
-    where: { id: intent.userId },
-    data: {
-      walletBalance: { increment: amount }
-    }
-  });
-  console.log(`[Flow] Wallet updated for User ${intent.userId}. New Balance: ${updatedUser.walletBalance}`);
+  await updateWalletBalance(intent.userId, amount, "increment");
+
+  const user = await getUserById(intent.userId);
+  if (!user) return;
+
+  console.log(`[Flow] Wallet updated for User ${intent.userId}. New Balance: ${user.walletBalance}`);
 
   // 4. If amount matches plan price and user has no plan, activate it
   const { planPrice } = await getPlatformConfig();
-  console.log(`[Flow] Checking for Plan Activation: Amount=${amount}, PlanPrice=${planPrice}, ExistingPlan=${updatedUser.planId}`);
+  console.log(`[Flow] Checking for Plan Activation: Amount=${amount}, PlanPrice=${planPrice}, ExistingPlan=${user.planId}`);
 
-  if (amount >= planPrice && !updatedUser.planId) {
+  if (amount >= planPrice && !user.planId) {
     try {
-      const plan = await prisma.plan.findFirst();
+      const plans = await getPlans();
+      const plan = plans[0]; // Take the first available plan
       if (plan) {
-        await prisma.user.update({
-          where: { id: intent.userId },
-          data: { planId: plan.id }
-        });
+        await updateUser(intent.userId, { planId: plan.id });
 
-        const purchase = await prisma.purchase.create({
-          data: {
-            userId: intent.userId,
-            planId: plan.id
-          }
+        const purchase = await createPurchase({
+          userId: intent.userId,
+          planId: plan.id
         });
 
         console.log(`[Flow] Activating Plan via Deposit for Purchase ${purchase.id}`);
@@ -155,24 +154,21 @@ export async function finalizePayment(paymentIntentId: string, txHash: string, a
     }
   }
 
-  // 5. Kafka Notification (Optional)
-  try {
-    const producer = await getProducer();
-    await producer.send({
-      topic: TOPICS.PAYMENT_CONFIRMED,
-      messages: [
-        {
-          key: intent.userId.toString(),
-          value: JSON.stringify({
-            paymentIntentId: intent.id,
-            txHash: txHash,
-            userId: intent.userId,
-            amount: amount
-          }),
-        },
-      ],
-    });
-  } catch (e: any) {
-    console.warn("[Kafka] Sync failed (Likely local env), continuing with direct distribution.");
-  }
+  // 5. Kafka Notification (Mandatory)
+  const producer = await getProducer();
+  await producer.send({
+    topic: TOPICS.PAYMENT_CONFIRMED,
+    messages: [
+      {
+        key: intent.userId.toString(),
+        value: JSON.stringify({
+          paymentIntentId: intent.id,
+          txHash: txHash,
+          userId: intent.userId,
+          amount: amount
+        }),
+      },
+    ],
+  });
 }
+

@@ -47,15 +47,54 @@ export default function AutoPoolRulesPage() {
                 </div>
 
                 {/* Queue Management Section */}
-                <div className="space-y-10">
-                    <div className="flex flex-col items-center space-y-4">
+                <div className="space-y-12">
+                    <div className="flex flex-col items-center space-y-4 text-center">
                         <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#4CAF50]/10 rounded-full border border-[#4CAF50]/20 text-[#4CAF50] text-[10px] font-black uppercase tracking-widest">
                             <Zap size={12} fill="currentColor" /> SYSTEM MANAGED LOGIC
                         </div>
-                        <h2 className="text-2xl font-black font-outfit text-slate-900 dark:text-white uppercase tracking-tight">Autonomous Queue Management</h2>
-                        <p className="text-center text-slate-500 max-w-2xl text-sm leading-relaxed">
-                            To ensure absolute fairness and transparency, all member placements within the Auto Pool structures are handled automatically by our proprietary time-based algorithm. Individual node progress and member tree visualizations are restricted to maintain system integrity.
+                        <h2 className="text-3xl font-black font-outfit text-slate-900 dark:text-white uppercase tracking-tight">Autonomous Queue Management</h2>
+                        <p className="text-slate-500 max-w-2xl text-sm leading-relaxed">
+                            To ensure absolute fairness, all placements within the Auto Pools are handled automatically by our time-based algorithm. Placements follow a strict 3x3 matrix structure.
                         </p>
+                    </div>
+
+                    {/* Comparison Table */}
+                    <div className="overflow-hidden bg-slate-50 dark:bg-white/5 rounded-[40px] border border-gray-100 dark:border-white/5">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-gray-100 dark:border-white/5">
+                                    <th className="p-8 text-[10px] font-black uppercase tracking-widest text-slate-400">Pool Tier</th>
+                                    <th className="p-8 text-[10px] font-black uppercase tracking-widest text-slate-400">Entry Fee (USDT)</th>
+                                    <th className="p-8 text-[10px] font-black uppercase tracking-widest text-slate-400">Total Reward</th>
+                                    <th className="p-8 text-[10px] font-black uppercase tracking-widest text-slate-400">Upgrade Path</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                                {[
+                                    { id: 1, fee: 1, reward: 10.2, next: "Pool 2" },
+                                    { id: 2, fee: 10, reward: 102, next: "Pool 3" },
+                                    { id: 3, fee: 100, reward: 1020, next: "Max Tier" }
+                                ].map((pool) => (
+                                    <tr key={pool.id} className="group hover:bg-white dark:hover:bg-white/5 transition-colors">
+                                        <td className="p-8">
+                                            <p className="font-black text-slate-900 dark:text-white font-outfit uppercase">Auto Pool {pool.id}</p>
+                                        </td>
+                                        <td className="p-8">
+                                            <p className="font-black text-[#6C63FF] text-xl font-outfit">${pool.fee}</p>
+                                        </td>
+                                        <td className="p-8">
+                                            <p className="font-black text-[#4CAF50] text-xl font-outfit">${pool.reward}</p>
+                                        </td>
+                                        <td className="p-8">
+                                            <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-white/10 rounded-full w-fit">
+                                                <TrendingUp size={12} className="text-slate-400" />
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{pool.next}</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

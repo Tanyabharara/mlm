@@ -54,7 +54,7 @@ export default function DashboardLayout({
           <NavItem href="/dashboard/wallet" icon={<Wallet size={18} />} label="Wallet" active={pathname === "/dashboard/wallet"} />
 
           {/* Admin Link */}
-          {userData?.role === 'ADMIN' && userData?.email === 'tanyabharara333@gmail.com' && (
+          {userData?.role === 'ADMIN' && (
             <div className="pt-4 mt-4 border-t border-[#e8ecf0] dark:border-[#2d3441]">
               <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-widest text-[#6C63FF] opacity-50">Administration</p>
               <NavItem href="/admin/settings" icon={<ShieldAlert size={18} />} label="Platform Config" active={pathname === "/admin/settings"} />
