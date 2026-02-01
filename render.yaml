@@ -2,5 +2,5 @@ services:
   - type: web
     runtime: node
     name: mlm
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci && npm run build
     startCommand: npm start
