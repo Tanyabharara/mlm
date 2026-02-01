@@ -12,9 +12,9 @@ import {
 
 export const config = getDefaultConfig({
     appName: 'MLM Platform',
-    projectId: 'YOUR_PROJECT_ID', // Replaced with placeholder for now
+    projectId: process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || '21fef48091f12692cad574a6f7753643',
     chains: [bsc, bscTestnet],
-    ssr: true, // If your dApp uses server side rendering (SSR)
+    ssr: true,
 });
 
 export const queryClient = new QueryClient();
