@@ -11,6 +11,7 @@ import {
   getAutoPoolEntry,
   updateAutoPoolEntry,
   getAutoPoolEntryChildren,
+  updatePlatformPoolBalance,
 } from "./firebase-db";
 
 export async function distributeDirectIncome(userId: string, purchaseAmount: number) {
@@ -101,6 +102,7 @@ async function distributePoolIncome(entryId: string) {
     const commission = entryFee * (levelPercentages[distLevel] || 0);
 
     if (commission > 0) {
+      await updatePlatformPoolBalance(commission, "decrement");
       await updateWalletBalance(parent.userId, commission, "increment");
       await createTransaction({
         userId: parent.userId,
@@ -138,10 +140,57 @@ async function checkPoolCompletion(entryId: string) {
     await updateAutoPoolEntry(entryId, {
       isCompleted: true,
       completedAt: new Date(),
-      // Adding a flag that indicates this user is eligible for the next pool
-      // The UI will show an "UPGRADE" button or "CLAIM TO WALLET" button
     } as any);
 
-    console.log(`[Pool] User ${entry.userId} completed ${entry.poolId}. Awaiting choice for upgrade.`);
+    // Pay completion reward to user
+    const pool: any = await getAutoPool(entry.poolId);
+
+    // Define user rewards based on pool
+    const userRewards: Record<string, number> = {
+      '1': 10.00,   // Pool 1: User gets $10
+      '2': 100.00,  // Pool 2: User gets $100
+      '3': 1000.00  // Pool 3: User gets $1,000
+    };
+
+    const completionReward = userRewards[String(entry.poolId)] || 0;
+
+    if (completionReward > 0) {
+      await updatePlatformPoolBalance(completionReward, "decrement");
+      await updateWalletBalance(entry.userId, completionReward, "increment");
+      await createTransaction({
+        userId: entry.userId,
+        amount: completionReward,
+        type: "CREDIT",
+        category: "POOL_COMPLETION",
+        description: `${pool?.name || "Pool"} completion reward`,
+      });
+
+      console.log(`[Pool] User ${entry.userId} completed ${pool?.name || entry.poolId}. Reward $${completionReward} credited. Awaiting upgrade choice.`);
+    }
+
+    // Track company revenue (difference between total reward and user payout)
+    const totalReward = Number(pool?.reward) || 0;
+    const companyShare = totalReward - completionReward;
+
+    if (companyShare > 0) {
+      // Get admin user for company wallet
+      const getFirstAdminUser = async () => {
+        const { getAllUsers } = await import("./firebase-db");
+        const users = await getAllUsers();
+        return users.find(u => u.role === "ADMIN") || null;
+      };
+
+      const adminUser = await getFirstAdminUser();
+      if (adminUser) {
+        await createTransaction({
+          userId: adminUser.id,
+          amount: companyShare,
+          type: "CREDIT",
+          category: "COMPANY_REVENUE",
+          description: `Company share from ${pool?.name || "Pool"} completion`,
+        });
+        console.log(`[Pool] Company revenue $${companyShare} from ${pool?.name || entry.poolId} completion.`);
+      }
+    }
   }
 }

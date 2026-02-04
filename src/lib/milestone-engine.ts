@@ -6,6 +6,7 @@ import {
   createMilestone,
   updateWalletBalance,
   createTransaction,
+  updatePlatformPoolBalance,
 } from "./firebase-db";
 
 const MILESTONE_SLABS = [
@@ -52,6 +53,7 @@ export async function processUserMilestones(userId: string) {
       console.log(`[Milestone] User ${userId} achieved target ${slab.target} with ${referralCount} referrals.`);
 
       await createMilestone({ userId, slab: slab.target, amount: slab.reward });
+      await updatePlatformPoolBalance(slab.reward, "decrement");
       await updateWalletBalance(userId, slab.reward, "increment");
       await createTransaction({
         userId,

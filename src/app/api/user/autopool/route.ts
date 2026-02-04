@@ -144,34 +144,24 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "No more pools available" }, { status: 400 });
       }
 
-      const entryFee = Number(nextPool.entryFee);
-      if (user.walletBalance < entryFee) {
-        return NextResponse.json({ error: "Insufficient balance for upgrade" }, { status: 400 });
-      }
+      // IMPORTANT: No wallet deduction!
+      // The completion reward ($10/$100/$1000) is already in wallet
+      // This acts as automatic funding for next pool entry
+      // User is reinvesting their earnings into the next pool
 
-      // Deduct fee
-      await updateWalletBalance(user.id, entryFee, "increment"); // Wait, decrement
-      // I'll use a negative increment
-      await updateWalletBalance(user.id, -entryFee, "increment");
-
-      await createTransaction({
-        userId: user.id,
-        amount: entryFee,
-        type: "DEBIT",
-        category: "POOL_UPGRADE",
-        description: `Upgrade to ${nextPool.name}`,
-      });
-
+      // Enter next pool (no fee charged - earnings cover it)
       await enterAutoPool(user.id, nextPoolId);
+
+      // Mark upgrade choice
       await updateAutoPoolEntry(entryId, { upgradeChoice: "UPGRADED" } as any);
 
       return NextResponse.json({ success: true, message: `Successfully upgraded to ${nextPool.name}` });
     } else if (action === "CLAIM") {
-      // For CLAIM, we just mark it as claimed. The reward was already paid in chunks.
-      // If the user expects a lump sum, we would have had to hold it. 
-      // But based on "Direct income monetization", it's instant.
+      // User chooses to withdraw earnings and exit pool system
+      // Earnings already in wallet from completion reward
+      // No further pool entry allowed - this is a final decision
       await updateAutoPoolEntry(entryId, { upgradeChoice: "CLAIMED" } as any);
-      return NextResponse.json({ success: true, message: "Reward claimed to wallet" });
+      return NextResponse.json({ success: true, message: "Earnings claimed. Pool journey ended. You can now withdraw your funds." });
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });

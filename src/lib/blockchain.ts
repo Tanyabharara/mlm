@@ -112,15 +112,30 @@ export async function finalizePayment(paymentIntentId: string, txHash: string, a
   // 1. Mark Payment as Verified
   await updatePaymentIntent(paymentIntentId, { status: 'VERIFIED', confirmations: 12 });
 
-  // 2. Log Activation Transaction (Visible to user but doesn't affect balance)
+  // 2. Define revenue split ($5 to OTT, $1 to platform pool)
+  const ottAmount = 5.0;
+  const poolAmount = 1.0;
+
+  // 3. Log Activation Transaction with revenue split metadata and update Pool Balance
+  const { updatePlatformPoolBalance } = await import("./firebase-db");
+  await updatePlatformPoolBalance(poolAmount, "increment");
+
   await createTransaction({
     userId: intent.userId,
     amount: amount,
     type: 'CREDIT',
     category: 'PLAN_ACTIVATION',
-    description: `Plan Activation Payment (Verified)`,
-    txHash: txHash
+    description: `Plan Activation (OTT: $${ottAmount}, Pool: $${poolAmount})`,
+    txHash: txHash,
+    metadata: JSON.stringify({
+      ottAmount,
+      poolAmount,
+      split: true,
+      timestamp: new Date().toISOString()
+    })
   });
+
+  console.log(`[Revenue] Split: OTT=$${ottAmount}, Pool=$${poolAmount}`);
 
   const user = await getUserById(intent.userId);
   if (!user) return;

@@ -559,6 +559,15 @@ export async function setAppConfig(key: string, value: string): Promise<void> {
   invalidateCache("appConfig:");
 }
 
+export async function updatePlatformPoolBalance(amount: number, type: "increment" | "decrement"): Promise<void> {
+  const configRef = db.collection("appConfig").doc("PLATFORM_POOL_BALANCE");
+  const doc = await configRef.get();
+  const currentBalance = doc.exists ? parseFloat((doc.data() as any).value || "0") : 0;
+  const newBalance = type === "increment" ? currentBalance + amount : currentBalance - amount;
+  await configRef.set({ key: "PLATFORM_POOL_BALANCE", value: String(newBalance) }, { merge: true });
+  invalidateCache("appConfig:");
+}
+
 export async function getAutoPools(): Promise<any[]> {
   const snapshot = await db.collection("autoPools").get();
   const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -824,5 +833,57 @@ export async function milestoneExists(userId: string, slab: number): Promise<boo
 export async function getTotalMilestonePayouts(): Promise<number> {
   const snapshot = await db.collection("milestones").get();
   return snapshot.docs.reduce((acc, doc) => acc + (Number(doc.data().amount) || 0), 0);
+}
+
+// ==================== Withdrawal Requests ====================
+
+export async function createWithdrawalRequest(data: {
+  userId: string;
+  amount: number;
+  walletAddress: string;
+  status: string;
+}): Promise<any> {
+  const ref = db.collection("withdrawalRequests");
+  const doc = await ref.add({
+    ...data,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  invalidateCache("withdrawalRequests");
+  return { id: doc.id, ...data };
+}
+
+export async function getWithdrawalRequestsByUser(userId: string): Promise<any[]> {
+  const snapshot = await db
+    .collection("withdrawalRequests")
+    .where("userId", "==", userId)
+    .orderBy("createdAt", "desc")
+    .get();
+
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function getAllWithdrawalRequests(): Promise<any[]> {
+  const snapshot = await db
+    .collection("withdrawalRequests")
+    .orderBy("createdAt", "desc")
+    .limit(100)
+    .get();
+
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function getWithdrawalRequestById(id: string): Promise<any | null> {
+  const doc = await db.collection("withdrawalRequests").doc(id).get();
+  if (!doc.exists) return null;
+  return { id: doc.id, ...doc.data() };
+}
+
+export async function updateWithdrawalRequest(id: string, data: any): Promise<any> {
+  await db.collection("withdrawalRequests").doc(id).update({
+    ...data,
+    updatedAt: FieldValue.serverTimestamp()
+  });
+  invalidateCache("withdrawalRequests");
+  return { id, ...data };
 }
 

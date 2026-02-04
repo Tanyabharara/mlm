@@ -18,11 +18,13 @@ export async function GET(req: NextRequest) {
 
     const verifiedPayments = allIntents.filter((p: any) => p.status === "VERIFIED");
     const totalCollected = verifiedPayments.reduce((acc: number, p: any) => acc + Number(p.amount), 0);
-    const totalMilestonePayouts = await getTotalMilestonePayouts();
 
-    // Splitting logic: $5 for OTT, $1 for Platform Pool
+    // Fetch persistent Platform Pool balance
+    const { getAppConfig } = await import("@/lib/firebase-db");
+    const poolBalanceDoc = await getAppConfig("PLATFORM_POOL_BALANCE");
+    const totalPlatformPool = parseFloat(poolBalanceDoc?.value || "0");
+
     const totalOttFund = verifiedPayments.length * 5;
-    const totalPlatformPool = (verifiedPayments.length * 1) - totalMilestonePayouts;
 
     const paginatedIntents = allIntents.slice(skip, skip + limit);
 

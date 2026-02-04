@@ -278,6 +278,189 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
+                {/* Card 3.5: Auto Pool Progress Overview */}
+                <div className="md:col-span-2 space-y-6">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-2xl font-black tracking-tighter">Auto Pool Journey</h3>
+                        <a
+                            href="/dashboard/autopool"
+                            className="text-sm font-black text-[#6C63FF] hover:text-[#5B52E5] flex items-center gap-2 transition-colors"
+                        >
+                            View Details <ArrowRight size={16} />
+                        </a>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {[1, 2, 3].map((poolNum) => {
+                            const poolData = earningsData?.poolBreakdown?.find((p: any) => Number(p.poolId) === poolNum);
+                            const status = poolData?.isCompleted ? "COMPLETED" :
+                                poolData ? "ACTIVE" : "LOCKED";
+
+                            return (
+                                <div
+                                    key={poolNum}
+                                    className={`p-8 rounded-[40px] border ${status === "COMPLETED"
+                                        ? "bg-emerald-50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/20"
+                                        : status === "ACTIVE"
+                                            ? "bg-white dark:bg-slate-900 border-gray-100 dark:border-white/5"
+                                            : "bg-slate-50 dark:bg-white/[0.02] border-dashed border-slate-200 dark:border-white/10 opacity-60"
+                                        } space-y-6 transition-all`}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs font-black uppercase tracking-widest text-slate-400">
+                                                Auto Pool {poolNum}
+                                            </p>
+                                            <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                                                ${poolData?.totalEarned || "0.00"}
+                                            </p>
+                                        </div>
+                                        <div
+                                            className={`p-2 rounded-xl ${status === "COMPLETED"
+                                                ? "bg-emerald-500/10 text-emerald-500"
+                                                : status === "ACTIVE"
+                                                    ? "bg-blue-500/10 text-blue-500"
+                                                    : "bg-slate-200 dark:bg-white/5 text-slate-400"
+                                                }`}
+                                        >
+                                            {status === "COMPLETED" ? (
+                                                <Trophy size={20} />
+                                            ) : status === "ACTIVE" ? (
+                                                <Clock size={20} />
+                                            ) : (
+                                                <Lock size={20} />
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {status === "ACTIVE" && poolData && (
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-xs font-bold text-slate-400">
+                                                <span>L1: {poolData.level1Count || 0}/3</span>
+                                                <span>L2: {poolData.level2Count || 0}/9</span>
+                                                <span>L3: {poolData.level3Count || 0}/27</span>
+                                            </div>
+                                            <div className="h-2 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-gradient-to-r from-[#6C63FF] to-[#5B52E5] transition-all"
+                                                    style={{
+                                                        width: `${Math.min(((poolData.level1Count || 0) + (poolData.level2Count || 0) + (poolData.level3Count || 0)) / 39 * 100, 100)}%`,
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {status === "COMPLETED" && (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2 text-emerald-500">
+                                                <CheckCircle2 size={16} />
+                                                <span className="text-xs font-black uppercase tracking-widest">
+                                                    Pool Complete
+                                                </span>
+                                            </div>
+                                            {!poolData?.upgradeChoice && poolNum < 3 && (
+                                                <>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (!poolData?.entryId) {
+                                                                    alert("Entry ID not found");
+                                                                    return;
+                                                                }
+                                                                try {
+                                                                    const token = await (window as any).firebaseAuth?.currentUser?.getIdToken();
+                                                                    const res = await fetch("/api/user/autopool", {
+                                                                        method: "POST",
+                                                                        headers: {
+                                                                            "Content-Type": "application/json",
+                                                                            Authorization: `Bearer ${token}`,
+                                                                        },
+                                                                        body: JSON.stringify({ entryId: poolData.entryId, action: "UPGRADE" }),
+                                                                    });
+                                                                    if (!res.ok) {
+                                                                        const error = await res.json();
+                                                                        throw new Error(error.error);
+                                                                    }
+                                                                    alert("Upgraded to next pool!");
+                                                                    window.location.reload();
+                                                                } catch (err: any) {
+                                                                    alert(err.message);
+                                                                }
+                                                            }}
+                                                            className="flex-1 py-2 px-4 bg-[#6C63FF] text-white rounded-xl text-xs font-black uppercase hover:bg-[#5B52E5] transition-colors"
+                                                            title="Use earnings to enter next pool"
+                                                        >
+                                                            Upgrade to Pool {poolNum + 1}
+                                                        </button>
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (!poolData?.entryId) {
+                                                                    alert("Entry ID not found");
+                                                                    return;
+                                                                }
+                                                                try {
+                                                                    const token = await (window as any).firebaseAuth?.currentUser?.getIdToken();
+                                                                    const res = await fetch("/api/user/autopool", {
+                                                                        method: "POST",
+                                                                        headers: {
+                                                                            "Content-Type": "application/json",
+                                                                            Authorization: `Bearer ${token}`,
+                                                                        },
+                                                                        body: JSON.stringify({ entryId: poolData.entryId, action: "CLAIM" }),
+                                                                    });
+                                                                    if (!res.ok) {
+                                                                        const error = await res.json();
+                                                                        throw new Error(error.error);
+                                                                    }
+                                                                    alert("Earnings claimed! You can now withdraw your funds.");
+                                                                    window.location.reload();
+                                                                } catch (err: any) {
+                                                                    alert(err.message);
+                                                                }
+                                                            }}
+                                                            className="flex-1 py-2 px-4 bg-white dark:bg-slate-800 border border-gray-200 dark:border-white/10 rounded-xl text-xs font-black uppercase hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                                                            title="Withdraw earnings and end pool journey"
+                                                        >
+                                                            Withdraw & Exit
+                                                        </button>
+                                                    </div>
+                                                    <div className="p-3 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/10 rounded-xl">
+                                                        <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                                                            ⚠️ Choose wisely: UPGRADE continues your journey. WITHDRAW ends it and you keep the earnings.
+                                                        </p>
+                                                    </div>
+                                                </>
+                                            )}
+                                            {poolData?.upgradeChoice === "UPGRADED" && (
+                                                <div className="p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/10 rounded-xl">
+                                                    <p className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                                                        ✓ Upgraded to Pool {poolNum + 1}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {poolData?.upgradeChoice === "CLAIMED" && (
+                                                <div className="p-3 bg-emerald-50 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/10 rounded-xl">
+                                                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                                        ✓ Earnings claimed to wallet
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {status === "LOCKED" && (
+                                        <div className="space-y-2">
+                                            <p className="text-xs text-slate-400 font-medium">
+                                                Complete Pool {poolNum - 1} to unlock
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
                 {/* Card 4: Auto Pool Rules */}
                 <div className="bg-white dark:bg-slate-900 p-10 rounded-[48px] border border-gray-100 dark:border-white/5 shadow-premium flex flex-col justify-between space-y-8">
                     <div className="flex items-center justify-between">

@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Sync and Fetch
         try {
           const idToken = await authUser.getIdToken();
-          await fetch("/api/auth/sync", {
+          const res = await fetch("/api/auth/sync", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -66,11 +66,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               email: authUser.email,
               name: authUser.displayName || (typeof window !== 'undefined' ? localStorage.getItem("pendingName") : null),
               photoURL: authUser.photoURL,
-              // Note: On reconnect, we might not have the referral code in state, 
+              // Note: On reconnect, we might not have the referral code in state,
               // but sync handles existing user logic.
               referralCode: typeof window !== 'undefined' ? localStorage.getItem("referralCode") : null,
             }),
           });
+
+          // Handle 403 errors (invalid or missing referral code)
+          if (res.status === 403) {
+            const data = await res.json();
+            // Sign out the user and show error
+            if (auth) {
+              await signOut(auth);
+            }
+            alert(data.error || "Valid referral code required for registration");
+            return;
+          }
+
+          if (!res.ok) {
+            throw new Error("Failed to sync user data");
+          }
 
           if (typeof window !== 'undefined') {
             localStorage.removeItem("pendingName");

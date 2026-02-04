@@ -4,7 +4,6 @@ import {
   getUserByFirebaseUid,
   getUserByEmail,
   getUserByReferralCode,
-  getFirstAdminUser,
   createUser,
   updateUser,
 } from "@/lib/firebase-db";
@@ -25,7 +24,7 @@ async function generateUniqueReferralCode(): Promise<string> {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { uid, email, name, photoURL } = body;
+    const { email, name, photoURL } = body;
     let { referralCode: providedCode } = body;
 
     const verifiedUid = await verifyAuthToken(req);
@@ -64,25 +63,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Failed to sync user data" }, { status: 500 });
     }
 
+    // Enforce mandatory referral code for users without referrer
     if (!user.referredById) {
-      let referrerId: string | null = null;
-      const effectiveCode = providedCode && typeof providedCode === "string" ? providedCode.trim() : null;
+      const effectiveCode = providedCode && typeof providedCode === "string" ? providedCode.trim()?.toUpperCase() : null;
 
-      if (effectiveCode && effectiveCode.toUpperCase() !== "OTTFY_ADMIN") {
-        const referrer = await getUserByReferralCode(effectiveCode.toUpperCase());
-        if (referrer && referrer.id !== user.id) {
-          referrerId = referrer.id;
-        }
+      // Block registration without valid referral code
+      if (!effectiveCode || effectiveCode === "OTTFY_ADMIN") {
+        return NextResponse.json({
+          error: "Valid referral code required for registration. Please contact your referrer."
+        }, { status: 403 });
       }
 
-      if (!referrerId) {
-        const admin = await getFirstAdminUser();
-        if (admin) referrerId = admin.id;
+      const referrer = await getUserByReferralCode(effectiveCode);
+      if (!referrer || referrer.id === user.id) {
+        return NextResponse.json({
+          error: "Invalid referral code. Please verify and try again."
+        }, { status: 403 });
       }
 
-      if (referrerId) {
-        user = await updateUser(user.id, { referredById: referrerId });
-      }
+      // Set referrer
+      user = await updateUser(user.id, { referredById: referrer.id });
     }
 
     return NextResponse.json({ user });

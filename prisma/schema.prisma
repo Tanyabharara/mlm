@@ -69,18 +69,19 @@ model AutoPool {
 }
 
 model AutoPoolEntry {
-  id          Int             @id @default(autoincrement())
-  userId      Int
-  poolId      Int
-  parentId    Int?
-  level       Int             @default(1)
-  isCompleted Boolean         @default(false)
-  createdAt   DateTime        @default(now())
-  completedAt DateTime?
-  parent      AutoPoolEntry?  @relation("PoolTree", fields: [parentId], references: [id])
-  children    AutoPoolEntry[] @relation("PoolTree")
-  pool        AutoPool        @relation(fields: [poolId], references: [id])
-  user        User            @relation(fields: [userId], references: [id])
+  id            Int             @id @default(autoincrement())
+  userId        Int
+  poolId        Int
+  parentId      Int?
+  level         Int             @default(1)
+  isCompleted   Boolean         @default(false)
+  upgradeChoice String?
+  createdAt     DateTime        @default(now())
+  completedAt   DateTime?
+  parent        AutoPoolEntry?  @relation("PoolTree", fields: [parentId], references: [id])
+  children      AutoPoolEntry[] @relation("PoolTree")
+  pool          AutoPool        @relation(fields: [poolId], references: [id])
+  user          User            @relation(fields: [userId], references: [id])
 }
 
 model Purchase {
@@ -100,6 +101,7 @@ model Transaction {
   category    String
   description String?
   txHash      String?  @unique
+  metadata    String?
   createdAt   DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id])
 }
@@ -120,13 +122,16 @@ model PaymentIntent {
 }
 
 model WithdrawalRequest {
-  id          Int       @id @default(autoincrement())
-  userId      Int
-  amount      Decimal
-  status      String    @default("PENDING")
-  createdAt   DateTime  @default(now())
-  processedAt DateTime?
-  user        User      @relation(fields: [userId], references: [id])
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  amount          Decimal
+  walletAddress   String
+  status          String    @default("PENDING")
+  txHash          String?
+  rejectionReason String?
+  createdAt       DateTime  @default(now())
+  processedAt     DateTime?
+  user            User      @relation(fields: [userId], references: [id])
 }
 
 model Milestone {

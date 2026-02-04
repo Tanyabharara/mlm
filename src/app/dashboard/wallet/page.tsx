@@ -27,11 +27,13 @@ import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { EarningsData } from "@/types/earnings";
 import WalletDepositModal from "@/components/WalletDepositModal";
+import WithdrawalModal from "@/components/WithdrawalModal";
 
 export default function WalletPage() {
     const { user: authUser } = useAuth();
     const [filter, setFilter] = useState("all");
     const [isDepositOpen, setIsDepositOpen] = useState(false);
+    const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
 
     // Real Earnings Data Query
     const { data: earnings, isLoading: earningsLoading } = useQuery<EarningsData>({
@@ -85,8 +87,11 @@ export default function WalletPage() {
                     >
                         <PlusCircle size={14} /> Deposit
                     </button>
-                    <button className="px-6 py-3 bg-white dark:bg-slate-900 border border-gray-100 dark:border-white/5 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                        Withdraw
+                    <button
+                        onClick={() => setIsWithdrawOpen(true)}
+                        className="px-6 py-3 bg-white dark:bg-slate-900 border border-gray-100 dark:border-white/5 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2"
+                    >
+                        <MinusCircle size={14} /> Withdraw
                     </button>
                 </div>
             </div>
@@ -200,6 +205,17 @@ export default function WalletPage() {
                 isOpen={isDepositOpen}
                 onClose={() => setIsDepositOpen(false)}
                 onSuccess={() => setIsDepositOpen(false)}
+            />
+
+            <WithdrawalModal
+                isOpen={isWithdrawOpen}
+                onClose={() => setIsWithdrawOpen(false)}
+                availableBalance={availableBalance}
+                onSuccess={() => {
+                    setIsWithdrawOpen(false);
+                    // Refetch earnings data
+                    window.location.reload();
+                }}
             />
         </div>
     );
