@@ -1,3 +1,4 @@
+
 import {
   getUserById,
   getAppConfig,
@@ -11,6 +12,9 @@ import {
   getAutoPoolEntry,
   updateAutoPoolEntry,
   getAutoPoolEntryChildren,
+  logSystemPayout,
+  getFirstAdminUser,
+  updatePlatformPoolBalance,
 } from "./firebase-db";
 
 export async function distributeDirectIncome(userId: string, purchaseAmount: number) {
@@ -31,14 +35,14 @@ export async function distributeDirectIncome(userId: string, purchaseAmount: num
     const rewardPercentage = levelRewards[level] || 0;
     if (rewardPercentage > 0) {
       const commission = Number(purchaseAmount) * rewardPercentage;
-      await updateWalletBalance(currentUplineId, commission, "increment");
-      await createTransaction({
-        userId: currentUplineId,
-        amount: commission,
-        type: "CREDIT",
-        category: "DIRECT_INCOME",
-        description: `Level ${level} direct income from ${user.name || "user"} ($${commission.toFixed(2)})`,
-      });
+
+      await logSystemPayout(
+        currentUplineId,
+        commission,
+        "DIRECT_INCOME",
+        `Level ${level} direct income from ${user.name || "user"} ($${commission.toFixed(2)})`
+      );
+
       const upline: any = await getUserById(currentUplineId);
       currentUplineId = upline?.referredById || null;
     } else {
@@ -101,14 +105,13 @@ async function distributePoolIncome(entryId: string) {
     const commission = entryFee * (levelPercentages[distLevel] || 0);
 
     if (commission > 0) {
-      await updateWalletBalance(parent.userId, commission, "increment");
-      await createTransaction({
-        userId: parent.userId,
-        amount: commission,
-        type: "CREDIT",
-        category: "POOL_INCOME",
-        description: `L${distLevel} pool income from ${freshEntry.id} in ${pool?.name ?? "Pool"} ($${commission})`,
-      });
+      const percentage = (levelPercentages[distLevel] || 0) * 100;
+      await logSystemPayout(
+        parent.userId,
+        commission,
+        "POOL_INCOME",
+        `Auto Pool ${pool?.id || "?"} L${distLevel} income (${percentage}%) from entry ${freshEntry.id}`
+      );
       await checkPoolCompletion(parent.id);
     }
 
@@ -138,10 +141,9 @@ async function checkPoolCompletion(entryId: string) {
     await updateAutoPoolEntry(entryId, {
       isCompleted: true,
       completedAt: new Date(),
-      // Adding a flag that indicates this user is eligible for the next pool
-      // The UI will show an "UPGRADE" button or "CLAIM TO WALLET" button
     } as any);
 
-    console.log(`[Pool] User ${entry.userId} completed ${entry.poolId}. Awaiting choice for upgrade.`);
+    const pool: any = await getAutoPool(entry.poolId);
+    console.log(`[Pool] User ${entry.userId} completed ${pool?.name || entry.poolId}. Awaiting upgrade choice.`);
   }
 }

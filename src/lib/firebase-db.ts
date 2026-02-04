@@ -559,6 +559,42 @@ export async function setAppConfig(key: string, value: string): Promise<void> {
   invalidateCache("appConfig:");
 }
 
+export async function updatePlatformPoolBalance(amount: number, type: "increment" | "decrement"): Promise<void> {
+  const configRef = db.collection("appConfig").doc("PLATFORM_POOL_BALANCE");
+  const doc = await configRef.get();
+  const currentBalance = doc.exists ? parseFloat((doc.data() as any).value || "0") : 0;
+  const newBalance = type === "increment" ? currentBalance + amount : currentBalance - amount;
+  await configRef.set({ key: "PLATFORM_POOL_BALANCE", value: String(newBalance.toFixed(2)) }, { merge: true });
+  invalidateCache("appConfig:");
+}
+
+export async function logSystemPayout(recipientUserId: string, amount: number, category: string, description: string) {
+  // 1. Credit User
+  await updateWalletBalance(recipientUserId, amount, "increment");
+  await createTransaction({
+    userId: recipientUserId,
+    amount: amount,
+    type: "CREDIT",
+    category: category,
+    description: description,
+  });
+
+  // 2. Debit Admin Pool
+  await updatePlatformPoolBalance(amount, "decrement");
+
+  const admin = await getFirstAdminUser();
+  if (admin) {
+    const recipient: any = await getUserById(recipientUserId);
+    await createTransaction({
+      userId: admin.id,
+      amount: amount,
+      type: "DEBIT",
+      category: category,
+      description: `Payout to ${recipient?.name || recipientUserId}: ${description}`,
+    });
+  }
+}
+
 export async function getAutoPools(): Promise<any[]> {
   const snapshot = await db.collection("autoPools").get();
   const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -772,6 +808,11 @@ export async function updateOttSubscription(id: string, data: any): Promise<void
     ...data,
     updatedAt: new Date(),
   });
+}
+
+export async function getAllOttSubscriptions(limit: number = 100): Promise<any[]> {
+  const snapshot = await db.collection("ottSubscriptions").orderBy("createdAt", "desc").limit(limit).get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
 

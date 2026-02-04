@@ -58,7 +58,7 @@ export default function DashboardLayout({
             <div className="pt-4 mt-4 border-t border-[#e8ecf0] dark:border-[#2d3441]">
               <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-widest text-[#6C63FF] opacity-50">Administration</p>
               <NavItem href="/admin/settings" icon={<ShieldAlert size={18} />} label="Platform Config" active={pathname === "/admin/settings"} />
-              <NavItem href="/admin/subscriptions" icon={<Monitor size={18} />} label="OTT Fulfillment" active={pathname === "/admin/subscriptions"} />
+              <NavItem href="/admin/ott" icon={<Monitor size={18} />} label="OTT Approval" active={pathname === "/admin/ott"} />
               <NavItem href="/admin/finance" icon={<TrendingUp size={18} />} label="Financial Matrix" active={pathname === "/admin/finance"} />
             </div>
           )}

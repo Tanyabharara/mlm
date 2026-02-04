@@ -34,12 +34,27 @@ export default function ActivatePage() {
 
     const userData = userDataResponse?.user;
 
-    // If already has plan, redirect to dashboard
+    // OTT Data Query
+    const { data: ottData } = useQuery({
+        queryKey: ["user", "ott", authUser?.uid],
+        queryFn: async () => {
+            const token = await authUser!.getIdToken();
+            const res = await fetch("/api/user/ott", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return res.json();
+        },
+        enabled: !!authUser?.uid,
+    });
+
+    const pendingOtt = ottData?.subscriptions?.find((s: any) => s.status === "PENDING" || s.status === "PENDING_APPROVAL");
+
+    // If already has plan OR pending approval, redirect to dashboard
     React.useEffect(() => {
-        if (userData?.plan) {
+        if (userData?.plan || pendingOtt) {
             router.push("/dashboard");
         }
-    }, [userData, router]);
+    }, [userData, pendingOtt, router]);
 
     return (
         <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] p-4 md:p-10 flex flex-col items-center justify-center space-y-12">

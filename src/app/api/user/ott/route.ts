@@ -16,9 +16,22 @@ export async function GET(req: Request) {
     }
 
     const subscriptions = await getOttSubscriptionsByUser(user.id);
-    subscriptions.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const now = new Date();
 
-    return NextResponse.json({ subscriptions });
+    const processedSubscriptions = subscriptions.map((s: any) => {
+      let status = s.status;
+      const expiresAt = s.expiresAt ? (s.expiresAt.toDate ? s.expiresAt.toDate() : new Date(s.expiresAt)) : null;
+
+      if (status === "ACTIVE" && expiresAt && expiresAt < now) {
+        status = "EXPIRED";
+      }
+
+      return { ...s, status, expiresAt };
+    });
+
+    processedSubscriptions.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    return NextResponse.json({ subscriptions: processedSubscriptions });
   } catch (error: any) {
     console.error("[API User OTT] Error:", error);
     return NextResponse.json({ error: error.message || "Internal Error" }, { status: 500 });

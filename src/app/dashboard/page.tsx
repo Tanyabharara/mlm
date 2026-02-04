@@ -85,14 +85,16 @@ export default function DashboardPage() {
         enabled: !!authUser?.uid && mounted,
     });
 
-    const activeOtt = ottData?.subscriptions?.find((s: any) => s.status === "ACTIVE");
+    const subscriptions = ottData?.subscriptions || [];
+    const activeOtt = subscriptions.find((s: any) => s.status === "ACTIVE");
+    const pendingOtt = subscriptions.find((s: any) => s.status === "PENDING" || s.status === "PENDING_APPROVAL");
 
-    // Redirect to activation if no plan
+    // Redirect to activation ONLY if no plan AND no pending payment/approval
     React.useEffect(() => {
-        if (!isLoading && userData && !userData.plan) {
+        if (!isLoading && userData && !userData.plan && !pendingOtt) {
             router.push("/dashboard/activate");
         }
-    }, [userData, isLoading, router]);
+    }, [userData, isLoading, router, pendingOtt]);
 
     if (!mounted) return null;
 
@@ -105,7 +107,8 @@ export default function DashboardPage() {
         );
     }
 
-    if (!userData?.plan) return null; // Let the redirect handle it
+    // Don't return null if pending approval, otherwise it's a white screen
+    if (!userData?.plan && !pendingOtt) return null;
 
     return (
         <div className="max-w-7xl mx-auto space-y-10 pb-20 px-4 md:px-0 font-sans">
@@ -117,9 +120,11 @@ export default function DashboardPage() {
                     </h1>
                 </div>
                 <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded-full text-emerald-600 dark:text-emerald-400">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[10px] font-black uppercase tracking-widest leading-none">Account Active</span>
+                    <div className={`flex items-center gap-2 px-3 py-1.5 ${userData?.plan ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20 text-amber-600 dark:text-amber-400'} border rounded-full`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${userData?.plan ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`} />
+                        <span className="text-[10px] font-black uppercase tracking-widest leading-none">
+                            {userData?.plan ? 'Account Active' : 'Pending Approval'}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -131,11 +136,11 @@ export default function DashboardPage() {
                         Welcome back, <span className="text-[#6C63FF]">{userData?.name || "User"}</span>! ✨
                     </h2>
                     <p className="text-blue-500 font-bold text-sm">
-                        Stream, Share & Earn: Your Journey to Financial Freedom Starts Here.
+                        {userData?.plan ? 'Stream, Share & Earn: Your Journey to Financial Freedom Starts Here.' : 'Your payment is being verified by our administrative team.'}
                     </p>
                 </div>
                 <p className="text-slate-400 font-medium text-xs max-w-2xl leading-relaxed">
-                    Your premium subscription is active. Here's your portfolio performance.
+                    {userData?.plan ? 'Your premium subscription is active. Here\'s your portfolio performance.' : 'Once approved, you will receive your OTT credentials and full dashboard access.'}
                 </p>
             </div>
 
@@ -167,10 +172,10 @@ export default function DashboardPage() {
                         </div>
                         <div className="space-y-1">
                             <h4 className="text-sm font-black font-outfit text-slate-900 dark:text-white uppercase tracking-wider">
-                                {activeOtt ? activeOtt.platform : "OTT Access"}
+                                {activeOtt ? activeOtt.platform : (pendingOtt ? "Registration Pending" : "OTT Access")}
                             </h4>
                             <p className="text-[10px] font-bold text-[#6C63FF] uppercase tracking-widest leading-none">
-                                {activeOtt ? "Active • Premium" : "Pending • Lifetime"}
+                                {activeOtt ? "Active • Premium" : (pendingOtt ? "Awaiting Admin Approval" : "Lifetime Access")}
                             </p>
                         </div>
                     </div>
@@ -179,19 +184,23 @@ export default function DashboardPage() {
                         {activeOtt ? (
                             <div className="p-5 bg-slate-50 dark:bg-white/5 rounded-3xl border border-slate-100 dark:border-white/10 space-y-2">
                                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                    <span>User</span>
-                                    <span className="text-slate-900 dark:text-white lowercase">{activeOtt.username || "n/a"}</span>
+                                    <span>OTT ID</span>
+                                    <span className="text-slate-900 dark:text-white font-mono">{activeOtt.username || "n/a"}</span>
                                 </div>
                                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                    <span>Key</span>
-                                    <span className="text-slate-900 dark:text-white font-mono">{activeOtt.password ? "••••••••" : "n/a"}</span>
+                                    <span>Status</span>
+                                    <span className="text-emerald-500 font-black">ACTIVE</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    <span>Expires</span>
+                                    <span className="text-slate-900 dark:text-white">{activeOtt.expiresAt ? new Date(activeOtt.expiresAt).toLocaleDateString() : 'N/A'}</span>
                                 </div>
                             </div>
                         ) : (
                             <div className="flex items-center gap-3">
                                 {[1, 2, 3, 4].map(i => (
                                     <div key={i} className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-300">
-                                        {i === 1 ? <Zap size={18} className="text-amber-500" /> : <Lock size={16} />}
+                                        {i === 1 ? (pendingOtt ? <Clock size={18} className="text-amber-500 animate-pulse" /> : <Zap size={18} className="text-amber-500" />) : <Lock size={16} />}
                                     </div>
                                 ))}
                             </div>
@@ -200,13 +209,14 @@ export default function DashboardPage() {
 
                     <div className="pt-4 flex items-center justify-between border-t border-slate-50 dark:border-white/5">
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                            {activeOtt ? "Access Secured" : "Awaiting Approval"}
+                            {activeOtt ? "Access Secured" : (pendingOtt ? "Processing Verification" : "Awaiting Activation")}
                         </p>
                         <button
-                            onClick={() => activeOtt && alert(`Access Link: ${activeOtt.link || 'Please use login details.'}`)}
-                            className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest hover:underline"
+                            onClick={() => activeOtt && alert(`Access ID: ${activeOtt.username}\nPlatform: ${activeOtt.platform}`)}
+                            className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest hover:underline disabled:opacity-50"
+                            disabled={!activeOtt}
                         >
-                            {activeOtt ? "View Portal" : "Check Status"}
+                            {activeOtt ? "View Details" : "Check Status"}
                         </button>
                     </div>
                 </div>

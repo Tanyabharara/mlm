@@ -4,6 +4,8 @@ import {
   getUserByFirebaseUid,
   getPlan,
   getDirectReferrals,
+  getOttSubscriptionsByUser,
+  updateUser,
 } from "@/lib/firebase-db";
 
 export async function POST(req: Request) {
@@ -20,7 +22,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const plan = user.planId ? await getPlan(user.planId) : null;
+    const subscriptions = await getOttSubscriptionsByUser(user.id);
+    const latestActive = subscriptions
+      .filter((s: any) => s.status === "ACTIVE")
+      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+    let plan = user.planId ? await getPlan(user.planId) : null;
+
+    if (plan && latestActive) {
+      const expiresAt = latestActive.expiresAt ? (latestActive.expiresAt.toDate ? latestActive.expiresAt.toDate() : new Date(latestActive.expiresAt)) : null;
+      if (expiresAt && expiresAt < new Date()) {
+        // Plan expired
+        plan = null;
+        // Optionally update DB to clear planId
+        await updateUser(user.id, { planId: null });
+        user.planId = null;
+      }
+    }
     const referralsSlice = await getDirectReferrals(user.id, 50);
 
     return NextResponse.json({

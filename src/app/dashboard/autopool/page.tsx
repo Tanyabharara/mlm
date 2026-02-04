@@ -135,13 +135,29 @@ export default function AutoPoolPage() {
                                                 <span>L2: {pool.stats.l2}/9</span>
                                                 <span>L3: {pool.stats.l3}/27</span>
                                             </div>
+
+                                            <div className="grid grid-cols-3 gap-2 pt-2">
+                                                <div className="p-2 rounded-xl bg-slate-50 dark:bg-white/5 text-center">
+                                                    <p className="text-[8px] font-black text-slate-400 uppercase">L1 Entries</p>
+                                                    <p className="text-xs font-black text-slate-900 dark:text-white">${pool.levelIncome.l1.toFixed(2)}</p>
+                                                </div>
+                                                <div className="p-2 rounded-xl bg-slate-50 dark:bg-white/5 text-center">
+                                                    <p className="text-[8px] font-black text-slate-400 uppercase">L2 Entries</p>
+                                                    <p className="text-xs font-black text-slate-900 dark:text-white">${pool.levelIncome.l2.toFixed(2)}</p>
+                                                </div>
+                                                <div className="p-2 rounded-xl bg-slate-50 dark:bg-white/5 text-center">
+                                                    <p className="text-[8px] font-black text-slate-400 uppercase">L3 Entries</p>
+                                                    <p className="text-xs font-black text-slate-900 dark:text-white">${pool.levelIncome.l3.toFixed(2)}</p>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
 
                                     {isCompleted && !hasDecision && (
                                         <div className="pt-4 space-y-3">
                                             <p className="text-[11px] font-bold text-slate-500 leading-relaxed">
-                                                Congratulations! Pool complete. Would you like to re-invest $10 to enter Pool 2, or claim your total earnings?
+                                                Congratulations! Pool complete. You have earned a total of ${((pool.levelIncome.l1 + pool.levelIncome.l2 + pool.levelIncome.l3)).toFixed(2)}.
+                                                Would you like to pay ${pool.id === '1' ? '10' : '100'} to upgrade to the next tier, or claim your earnings?
                                             </p>
                                             <div className="grid grid-cols-2 gap-3">
                                                 <button

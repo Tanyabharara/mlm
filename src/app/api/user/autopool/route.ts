@@ -81,13 +81,21 @@ export async function GET(request: Request) {
         }
       }
 
+      const entryFee = Number(pool.entryFee || 0);
+      const levelIncome = {
+        l1: l1 * (entryFee * 0.1),
+        l2: l2 * (entryFee * 0.2),
+        l3: l3 * (entryFee * 0.3),
+      };
+
       return {
         id: pool.id,
         name: pool.name,
-        entryFee: String(pool.entryFee ?? 0),
+        entryFee: String(entryFee),
         status,
         upgradeChoice: entry?.upgradeChoice || null,
         stats: { l1, l2, l3 },
+        levelIncome,
         tree,
       };
     });

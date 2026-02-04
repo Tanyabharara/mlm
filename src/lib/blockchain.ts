@@ -10,7 +10,10 @@ import {
   updateUser,
   updateWalletBalance,
   getPlans,
-  createPurchase
+  createPurchase,
+  getFirstAdminUser,
+  updatePlatformPoolBalance,
+  createOttSubscription
 } from "./firebase-db";
 
 const BSC_RPC_URL = "https://data-seed-prebsc-1-s1.binance.org:8545/";
@@ -112,42 +115,54 @@ export async function finalizePayment(paymentIntentId: string, txHash: string, a
   // 1. Mark Payment as Verified
   await updatePaymentIntent(paymentIntentId, { status: 'VERIFIED', confirmations: 12 });
 
-  // 2. Log Activation Transaction (Visible to user but doesn't affect balance)
+  // 2. Define revenue split ($5 to OTT, $1 to platform pool)
+  const ottAmount = 5.0;
+  const poolAmount = 1.0;
+
+  const user = await getUserById(intent.userId);
+  if (!user) return;
+
+  // 3. Log Activation Transaction with revenue split metadata
+  await updatePlatformPoolBalance(poolAmount, "increment");
+
+  const admin = await getFirstAdminUser();
+  if (admin) {
+    await createTransaction({
+      userId: admin.id,
+      amount: amount,
+      type: 'CREDIT',
+      category: 'REVENUE',
+      description: `Plan Revenue from ${user.name || intent.userId} (OTT: $${ottAmount}, Pool: $${poolAmount})`,
+      txHash: txHash
+    });
+  }
+
   await createTransaction({
     userId: intent.userId,
     amount: amount,
     type: 'CREDIT',
     category: 'PLAN_ACTIVATION',
-    description: `Plan Activation Payment (Verified)`,
+    description: `Plan Activation (OTT: $${ottAmount}, Pool: $${poolAmount})`,
     txHash: txHash
   });
 
-  const user = await getUserById(intent.userId);
-  if (!user) return;
+  console.log(`[Revenue] Split: OTT=$${ottAmount}, Pool=$${poolAmount}`);
 
-  console.log(`[Flow] Wallet updated for User ${intent.userId}. New Balance: ${user.walletBalance}`);
-
-  // 4. If amount matches plan price and user has no plan, activate it
+  // 4. Create Pending OTT Subscription request (Admin must approve)
   const { planPrice } = await getPlatformConfig();
-  console.log(`[Flow] Checking for Plan Activation: Amount=${amount}, PlanPrice=${planPrice}, ExistingPlan=${user.planId}`);
+  console.log(`[Flow] Processing Payment: Amount=${amount}, PlanPrice=${planPrice}`);
 
-  if (amount >= planPrice && !user.planId) {
+  if (amount >= planPrice) {
     try {
-      const plans = await getPlans();
-      const plan = plans[0]; // Take the first available plan
-      if (plan) {
-        await updateUser(intent.userId, { planId: plan.id });
-
-        const purchase = await createPurchase({
-          userId: intent.userId,
-          planId: plan.id
-        });
-
-        console.log(`[Flow] Activating Plan via Deposit for Purchase ${purchase.id}`);
-        await distributeIncome(purchase.id);
-      }
-    } catch (planError: any) {
-      console.error(`[Flow] Critical: Plan activation failed, but wallet was credited: ${planError.message}`);
+      await createOttSubscription({
+        userId: intent.userId,
+        platform: "PREMIUM_ACCESS", // Generic placeholder
+        status: "PENDING_APPROVAL",
+        paymentIntentId: intent.id
+      });
+      console.log(`[Flow] Created PENDING_APPROVAL OTT subscription for User ${intent.userId}`);
+    } catch (ottError: any) {
+      console.error(`[Flow] Error creating OTT subscription: ${ottError.message}`);
     }
   }
 

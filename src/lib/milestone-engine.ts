@@ -6,6 +6,7 @@ import {
   createMilestone,
   updateWalletBalance,
   createTransaction,
+  logSystemPayout,
 } from "./firebase-db";
 
 const MILESTONE_SLABS = [
@@ -52,14 +53,14 @@ export async function processUserMilestones(userId: string) {
       console.log(`[Milestone] User ${userId} achieved target ${slab.target} with ${referralCount} referrals.`);
 
       await createMilestone({ userId, slab: slab.target, amount: slab.reward });
-      await updateWalletBalance(userId, slab.reward, "increment");
-      await createTransaction({
+
+      await logSystemPayout(
         userId,
-        amount: slab.reward,
-        type: "CREDIT",
-        category: "MILESTONE_INCOME",
-        description: `Target Incentive Reward for achieving ${slab.target} direct referrals`,
-      });
+        slab.reward,
+        "MILESTONE_INCOME",
+        `Target Incentive Reward for achieving ${slab.target} direct referrals`
+      );
+
       console.log(`[Milestone] Reward credited for slab ${slab.target} to user ${userId}`);
     }
   }
