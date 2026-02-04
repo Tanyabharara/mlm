@@ -69,11 +69,8 @@ export default function DashboardPage() {
         enabled: !!authUser?.uid && mounted,
     });
 
-    const isLoading = userLoading || earningsLoading;
-    const userData = userDataResponse?.user;
-
     // OTT Data Query
-    const { data: ottData } = useQuery({
+    const { data: ottData, isLoading: ottLoading } = useQuery({
         queryKey: ["user", "ott", authUser?.uid],
         queryFn: async () => {
             const token = await authUser!.getIdToken();
@@ -85,16 +82,30 @@ export default function DashboardPage() {
         enabled: !!authUser?.uid && mounted,
     });
 
+    const isLoading = userLoading || earningsLoading || ottLoading;
+    const userData = userDataResponse?.user;
+
     const subscriptions = ottData?.subscriptions || [];
     const activeOtt = subscriptions.find((s: any) => s.status === "ACTIVE");
     const pendingOtt = subscriptions.find((s: any) => s.status === "PENDING" || s.status === "PENDING_APPROVAL");
 
-    // Redirect to activation ONLY if no plan AND no pending payment/approval
+    const handleCopyInvite = () => {
+        if (!userData?.referralCode) return;
+        const link = `${window.location.origin}/register?ref=${userData.referralCode}`;
+        navigator.clipboard.writeText(link);
+        alert("Invite link copied to clipboard! 🚀");
+    };
+
+    // Redirect logic
     React.useEffect(() => {
-        if (!isLoading && userData && !userData.plan && !pendingOtt) {
-            router.push("/dashboard/activate");
+        if (!isLoading && userData) {
+            if (!userData.plan && !pendingOtt && !activeOtt) {
+                router.push("/dashboard/activate");
+            } else if (!userData.plan && pendingOtt) {
+                router.push("/dashboard/pending");
+            }
         }
-    }, [userData, isLoading, router, pendingOtt]);
+    }, [userData, isLoading, router, pendingOtt, activeOtt]);
 
     if (!mounted) return null;
 
@@ -107,8 +118,15 @@ export default function DashboardPage() {
         );
     }
 
-    // Don't return null if pending approval, otherwise it's a white screen
-    if (!userData?.plan && !pendingOtt) return null;
+    // Don't return blank if still syncing or redirects are pending
+    if (!userData?.plan && !pendingOtt && !activeOtt) {
+        return (
+            <div className="flex flex-col h-[60vh] items-center justify-center space-y-4">
+                <Loader2 className="w-10 h-10 animate-spin text-[#6C63FF]" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Verifying Permissions...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-7xl mx-auto space-y-10 pb-20 px-4 md:px-0 font-sans">
@@ -401,7 +419,10 @@ export default function DashboardPage() {
                         <p className="text-[10px] font-black uppercase tracking-widest opacity-50">Your Invitation Code</p>
                         <p className="text-xl font-black font-outfit tracking-widest text-[#6C63FF]">{userData?.referralCode || "------"}</p>
                     </div>
-                    <button className="h-12 px-8 bg-[#6C63FF] hover:bg-[#5B52E5] text-white rounded-full text-xs font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2">
+                    <button
+                        onClick={handleCopyInvite}
+                        className="h-12 px-8 bg-[#6C63FF] hover:bg-[#5B52E5] text-white rounded-full text-xs font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
+                    >
                         Get Invite Link <ArrowRight size={14} />
                     </button>
                 </div>

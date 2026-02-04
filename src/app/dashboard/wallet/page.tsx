@@ -27,20 +27,23 @@ import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { EarningsData } from "@/types/earnings";
 import WalletDepositModal from "@/components/WalletDepositModal";
+import WalletWithdrawModal from "@/components/WalletWithdrawModal";
 
 export default function WalletPage() {
-    const { user: authUser } = useAuth();
+    const { user: authUser, userData } = useAuth();
     const [filter, setFilter] = useState("all");
     const [isDepositOpen, setIsDepositOpen] = useState(false);
+    const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
 
     // Real Earnings Data Query
     const { data: earnings, isLoading: earningsLoading } = useQuery<EarningsData>({
         queryKey: ["earnings", authUser?.email],
         queryFn: async () => {
+            const token = await authUser!.getIdToken();
             const response = await fetch("/api/user/earnings", {
                 headers: {
                     "x-user-email": authUser?.email || "",
-                    Authorization: `Bearer ${await authUser!.getIdToken()}`,
+                    Authorization: `Bearer ${token}`,
                 },
             });
             if (!response.ok) throw new Error("Failed to fetch earnings");
@@ -49,8 +52,8 @@ export default function WalletPage() {
         enabled: !!authUser?.uid,
     });
 
-    const isLoading = earningsLoading;
-    const availableBalance = Number(earnings?.totalEarnings || 0);
+    const isLoading = earningsLoading || !userData;
+    const availableBalance = Number(userData?.walletBalance || 0);
 
     const filteredTransactions = useMemo(() => {
         if (!earnings?.recentTransactions) return [];
@@ -81,12 +84,15 @@ export default function WalletPage() {
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => setIsDepositOpen(true)}
-                        className="px-6 py-3 bg-[#6C63FF] text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-[#6C63FF]/20 flex items-center gap-2"
+                        className="px-6 py-3 bg-[#6C63FF] text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-[#6C63FF]/20 flex items-center gap-2 transition-all active:scale-95"
                     >
                         <PlusCircle size={14} /> Deposit
                     </button>
-                    <button className="px-6 py-3 bg-white dark:bg-slate-900 border border-gray-100 dark:border-white/5 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                        Withdraw
+                    <button
+                        onClick={() => setIsWithdrawOpen(true)}
+                        className="px-6 py-3 bg-white dark:bg-slate-900 border border-gray-100 dark:border-white/5 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-50 transition-all active:scale-95"
+                    >
+                        <ArrowLeftRight size={14} /> Withdraw
                     </button>
                 </div>
             </div>
@@ -98,23 +104,23 @@ export default function WalletPage() {
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-[60px]" />
                     <div className="relative z-10 space-y-8">
                         <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 px-3 py-1 bg-white/10 rounded-full border border-white/10">Active Balance</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 px-3 py-1 bg-white/10 rounded-full border border-white/10">Withdrawable Balance</span>
                             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center border border-white/20">
                                 <Wallet className="w-5 h-5" />
                             </div>
                         </div>
                         <div className="space-y-1">
-                            <h2 className="text-6xl font-black tracking-tighter">${availableBalance.toLocaleString()}</h2>
-                            <p className="text-xs font-bold text-white/60">USDT (Binance Smart Chain)</p>
+                            <h2 className="text-6xl font-black tracking-tighter">${availableBalance.toFixed(2)}</h2>
+                            <p className="text-xs font-bold text-white/60">Verified Node Settlements</p>
                         </div>
                         <div className="pt-8 border-t border-white/10 flex items-center gap-6">
                             <div>
                                 <p className="text-[8px] font-black uppercase tracking-widest opacity-40 mb-1">Total Payouts</p>
-                                <p className="text-lg font-black">$0.00</p>
+                                <p className="text-lg font-black">${Number(earnings?.totalPayouts || 0).toFixed(2)}</p>
                             </div>
                             <div>
-                                <p className="text-[8px] font-black uppercase tracking-widest opacity-40 mb-1">Locked (Pool)</p>
-                                <p className="text-lg font-black">$100.00</p>
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-40 mb-1">Locked Funds</p>
+                                <p className="text-lg font-black">${Number(earnings?.pendingWithdrawals || 0).toFixed(2)}</p>
                             </div>
                         </div>
                     </div>
@@ -201,6 +207,13 @@ export default function WalletPage() {
                 onClose={() => setIsDepositOpen(false)}
                 onSuccess={() => setIsDepositOpen(false)}
             />
+
+            <WalletWithdrawModal
+                isOpen={isWithdrawOpen}
+                onClose={() => setIsWithdrawOpen(false)}
+                availableBalance={availableBalance}
+                onSuccess={() => setIsWithdrawOpen(false)}
+            />
         </div>
     );
 }
@@ -222,11 +235,13 @@ function ActionItem({ icon, title, desc, color }: any) {
 
 function TxRow({ tx }: any) {
     const isCredit = tx.type === "CREDIT";
+    const isWithdrawal = tx.category === "WITHDRAWAL";
+
     return (
         <div className="p-8 hover:bg-slate-50 dark:hover:bg-white/[0.02] flex items-center justify-between transition-colors group">
             <div className="flex items-center gap-5">
-                <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${isCredit ? 'bg-[#4CAF50]/10 border-[#4CAF50]/10 text-[#4CAF50]' : 'bg-red-50 border-red-100 text-red-400'}`}>
-                    {isCredit ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
+                <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${isCredit ? 'bg-[#4CAF50]/10 border-[#4CAF50]/10 text-[#4CAF50]' : 'bg-red-50 border-red-100 text-red-500'}`}>
+                    {isWithdrawal ? <Lock size={20} /> : (isCredit ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />)}
                 </div>
                 <div>
                     <p className="text-sm font-black text-slate-900 dark:text-white leading-none mb-1.5">{tx.description}</p>

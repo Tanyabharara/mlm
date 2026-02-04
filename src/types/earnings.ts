@@ -42,4 +42,6 @@ export interface EarningsData {
         total: number;
     };
     recentTransactions: Transaction[];
+    totalPayouts: string;
+    pendingWithdrawals: string;
 }

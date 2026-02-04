@@ -35,7 +35,7 @@ export default function PaymentStatusPage() {
                 if (data.status === "VERIFIED") {
                     // Success! 
                     setTimeout(() => {
-                        window.location.href = "/dashboard";
+                        window.location.href = "/dashboard/pending";
                     }, 3000);
                 }
             } catch (error) {

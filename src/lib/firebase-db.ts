@@ -867,3 +867,49 @@ export async function getTotalMilestonePayouts(): Promise<number> {
   return snapshot.docs.reduce((acc, doc) => acc + (Number(doc.data().amount) || 0), 0);
 }
 
+export async function createWithdrawalRequest(data: { userId: string; amount: number }): Promise<any> {
+  const now = new Date();
+  const docRef = await db.collection("withdrawalRequests").add({
+    ...data,
+    status: "PENDING",
+    createdAt: now,
+    updatedAt: now,
+  });
+  return { id: docRef.id, ...data, status: "PENDING", createdAt: now, updatedAt: now };
+}
+
+export async function getWithdrawalRequestsByUser(userId: string): Promise<any[]> {
+  const snapshot = await db
+    .collection("withdrawalRequests")
+    .where("userId", "==", userId)
+    .get();
+
+  const docs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return docs.sort((a: any, b: any) => {
+    const timeA = a.createdAt?.seconds || 0;
+    const timeB = b.createdAt?.seconds || 0;
+    return timeB - timeA;
+  });
+}
+
+export async function getAllWithdrawalRequests(limit: number = 100): Promise<any[]> {
+  const snapshot = await db
+    .collection("withdrawalRequests")
+    .orderBy("createdAt", "desc")
+    .limit(limit)
+    .get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function getWithdrawalRequestById(id: string): Promise<any | null> {
+  const doc = await db.collection("withdrawalRequests").doc(id).get();
+  if (!doc.exists) return null;
+  return { id: doc.id, ...doc.data() };
+}
+
+export async function updateWithdrawalRequest(id: string, data: any): Promise<void> {
+  await db.collection("withdrawalRequests").doc(id).update({
+    ...data,
+    updatedAt: new Date(),
+  });
+}

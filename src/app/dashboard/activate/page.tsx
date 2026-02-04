@@ -49,10 +49,12 @@ export default function ActivatePage() {
 
     const pendingOtt = ottData?.subscriptions?.find((s: any) => s.status === "PENDING" || s.status === "PENDING_APPROVAL");
 
-    // If already has plan OR pending approval, redirect to dashboard
+    // If already has plan OR pending approval, redirect
     React.useEffect(() => {
-        if (userData?.plan || pendingOtt) {
+        if (userData?.plan) {
             router.push("/dashboard");
+        } else if (pendingOtt) {
+            router.push("/dashboard/pending");
         }
     }, [userData, pendingOtt, router]);
 
@@ -145,7 +147,7 @@ export default function ActivatePage() {
                         onClose={() => setIsModalOpen(false)}
                         onSuccess={() => {
                             setIsModalOpen(false);
-                            router.push("/dashboard");
+                            router.push("/dashboard/pending");
                         }}
                         initialAmount="600"
                     />

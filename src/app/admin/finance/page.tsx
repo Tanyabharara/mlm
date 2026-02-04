@@ -81,7 +81,6 @@ export default function AdminFinancePage() {
         enabled: !!authUser && userData?.role === 'ADMIN'
     });
 
-    // Fetch Global Transaction History
     const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
         queryKey: ["admin", "all-transactions"],
         queryFn: async () => {
@@ -92,6 +91,41 @@ export default function AdminFinancePage() {
             return res.json();
         },
         enabled: !!authUser && userData?.role === 'ADMIN'
+    });
+
+    const { data: withdrawalsData, isLoading: withdrawalsLoading } = useQuery({
+        queryKey: ["admin", "withdrawals"],
+        queryFn: async () => {
+            const token = await authUser!.getIdToken();
+            const res = await fetch("/api/admin/withdrawals", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return res.json();
+        },
+        enabled: !!authUser && userData?.role === 'ADMIN'
+    });
+
+    const withdrawalMutation = useMutation({
+        mutationFn: async ({ withdrawalId, action }: any) => {
+            const token = await authUser!.getIdToken();
+            const res = await fetch("/api/admin/withdrawals", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ withdrawalId, action })
+            });
+            return res.json();
+        },
+        onSuccess: (data) => {
+            if (data.error) alert(data.error);
+            else {
+                queryClient.invalidateQueries({ queryKey: ["admin", "withdrawals"] });
+                queryClient.invalidateQueries({ queryKey: ["admin", "all-transactions"] });
+                alert("Action completed! 🚀");
+            }
+        }
     });
 
     // Update Mutation
@@ -319,6 +353,80 @@ export default function AdminFinancePage() {
                                 </div>
                             </motion.div>
                         ))}
+                    </div>
+                </div>
+
+                {/* Pending Withdrawal Requests Section */}
+                <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-white/5 p-8 shadow-sm space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500">
+                                <ArrowDownRight size={20} />
+                            </div>
+                            <h3 className="text-2xl font-black font-outfit tracking-tight text-slate-900 dark:text-white uppercase">Waitlisted Payouts</h3>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="text-left border-b border-slate-50 dark:border-white/5">
+                                    <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-slate-400">User / Identity</th>
+                                    <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Net Amount</th>
+                                    <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Request Time</th>
+                                    <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Clearance Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50 dark:divide-white/5">
+                                {withdrawalsData?.withdrawals?.filter((w: any) => w.status === "PENDING").map((w: any) => (
+                                    <tr key={w.id} className="group">
+                                        <td className="py-6">
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-bold text-slate-900 dark:text-white">{w.user?.name || "Unknown User"}</span>
+                                                <span className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest opacity-60">{w.user?.email}</span>
+                                            </div>
+                                        </td>
+                                        <td className="py-6">
+                                            <span className="text-sm font-black text-red-500">${Number(w.amount).toFixed(2)}</span>
+                                        </td>
+                                        <td className="py-6">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(w.createdAt).toLocaleString()}</span>
+                                        </td>
+                                        <td className="py-6 text-right space-x-2">
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm("Are you sure you want to reject this withdrawal? The balance will be refunded.")) {
+                                                        withdrawalMutation.mutate({ withdrawalId: w.id, action: "REJECT" });
+                                                    }
+                                                }}
+                                                disabled={withdrawalMutation.isPending}
+                                                className="px-4 py-2 border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                            >
+                                                Reject
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm(`Confirm payment of $${Number(w.amount).toFixed(2)} to ${w.user?.name}?`)) {
+                                                        withdrawalMutation.mutate({ withdrawalId: w.id, action: "APPROVE" });
+                                                    }
+                                                }}
+                                                disabled={withdrawalMutation.isPending}
+                                                className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all active:scale-95"
+                                            >
+                                                Approve & Pay
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {(!withdrawalsData?.withdrawals || withdrawalsData.withdrawals.filter((w: any) => w.status === "PENDING").length === 0) && (
+                                    <tr>
+                                        <td colSpan={4} className="py-12 text-center text-slate-300 font-bold text-xs uppercase tracking-widest italic">
+                                            No pending payout clearances found.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 

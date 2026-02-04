@@ -163,6 +163,17 @@ export async function GET() {
       });
     }
 
+    const { getWithdrawalRequestsByUser } = await import("@/lib/firebase-db");
+    const withdrawalRequests = await getWithdrawalRequestsByUser(dbUser.id);
+
+    const totalPayouts = withdrawalRequests
+      .filter((w: any) => w.status === "APPROVED")
+      .reduce((acc: number, w: any) => acc + Number(w.amount), 0);
+
+    const pendingWithdrawals = withdrawalRequests
+      .filter((w: any) => w.status === "PENDING")
+      .reduce((acc: number, w: any) => acc + Number(w.amount), 0);
+
     return NextResponse.json({
       totalEarnings: totalEarnings.toFixed(2),
       directIncome: directIncome.toFixed(2),
@@ -181,6 +192,8 @@ export async function GET() {
         ...t,
         amount: Number(t.amount).toFixed(2),
       })),
+      totalPayouts: totalPayouts.toFixed(2),
+      pendingWithdrawals: pendingWithdrawals.toFixed(2),
     });
   } catch (error: any) {
     console.error("[API Earnings] Error:", error.message);
