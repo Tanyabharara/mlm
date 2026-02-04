@@ -14,7 +14,7 @@ const MILESTONE_SLABS = [
   { target: 50, reward: 0.4 },
 ];
 
-const RETENTION_DAYS = 0; // Reduced from 60 for testing/sandbox progression
+const RETENTION_DAYS = 0;
 
 export async function processMilestones() {
   console.log("Starting Milestone Processing...");
@@ -34,13 +34,11 @@ export async function processUserMilestones(userId: string) {
   const now = new Date();
   const activeRetainedReferrals = referrals.filter((ref: any) => {
     if (ref.isBlocked) return false;
-    const createdAt = ref.createdAt?.toDate ? ref.createdAt.toDate() : new Date(ref.createdAt);
-    const daysSinceJoined = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
 
+    // THE RULE: Referral is successful only after paying $6 activation amount (hasPlan)
     const hasPlan = ref.planId && ref.planId !== "";
-    const hasPaid = Number(ref.walletBalance) >= 1;
 
-    return daysSinceJoined >= RETENTION_DAYS && (hasPlan || hasPaid);
+    return hasPlan;
   });
 
   const referralCount = activeRetainedReferrals.length;

@@ -57,7 +57,7 @@ export async function GET() {
     );
 
     const totalEarnings = transactions
-      .filter((t: any) => t.type === "CREDIT")
+      .filter((t: any) => t.type === "CREDIT" && t.category !== "PLAN_ACTIVATION")
       .reduce((acc: number, t: any) => acc + Number(t.amount), 0);
 
     const levelEarnings = new Array(10).fill(0);
@@ -94,12 +94,8 @@ export async function GET() {
     const now = new Date();
     const totalActiveReferrals = referrals.length;
     const activeRetainedReferralsCount = referrals.filter((ref: any) => {
-      const createdAt = ref.createdAt?.toDate ? ref.createdAt.toDate() : new Date(ref.createdAt);
-      const daysSinceJoined = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
-      // Count as verified if they have a planId OR if they have deposited at least $1 (even if planId didn't sync)
-      const hasPlan = ref.planId && ref.planId !== "";
-      const hasPaid = Number(ref.walletBalance) >= 1;
-      return daysSinceJoined >= 0 && (hasPlan || hasPaid);
+      // THE RULE: Referral is successful only after paying $6 activation amount (hasPlan)
+      return ref.planId && ref.planId !== "";
     }).length;
 
     const milestoneProgress = MILESTONE_SLABS.map((slab) => ({

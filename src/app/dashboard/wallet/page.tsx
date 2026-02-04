@@ -55,7 +55,7 @@ export default function WalletPage() {
     const filteredTransactions = useMemo(() => {
         if (!earnings?.recentTransactions) return [];
         if (filter === "all") return earnings.recentTransactions;
-        if (filter === "income") return earnings.recentTransactions.filter(t => t.type === "CREDIT");
+        if (filter === "income") return earnings.recentTransactions.filter(t => t.type === "CREDIT" && t.category !== "PLAN_ACTIVATION");
         if (filter === "withdrawal") return earnings.recentTransactions.filter(t => t.type === "DEBIT");
         return earnings.recentTransactions;
     }, [earnings, filter]);

@@ -112,18 +112,15 @@ export async function finalizePayment(paymentIntentId: string, txHash: string, a
   // 1. Mark Payment as Verified
   await updatePaymentIntent(paymentIntentId, { status: 'VERIFIED', confirmations: 12 });
 
-  // 2. Log Deposit Transaction
+  // 2. Log Activation Transaction (Visible to user but doesn't affect balance)
   await createTransaction({
     userId: intent.userId,
     amount: amount,
     type: 'CREDIT',
-    category: 'DEPOSIT',
-    description: `Wallet Deposit (TX: ${txHash.substring(0, 10)}...)`,
+    category: 'PLAN_ACTIVATION',
+    description: `Plan Activation Payment (Verified)`,
     txHash: txHash
   });
-
-  // 3. Update User Wallet Balance
-  await updateWalletBalance(intent.userId, amount, "increment");
 
   const user = await getUserById(intent.userId);
   if (!user) return;

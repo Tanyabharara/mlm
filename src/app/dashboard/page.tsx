@@ -19,7 +19,8 @@ import {
     Trophy,
     ExternalLink,
     PlusCircle,
-    Monitor
+    Monitor,
+    Clock
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EarningsData } from "@/types/earnings";
@@ -210,47 +211,70 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Card 3: Incentive Targets */}
-                <div className="bg-white dark:bg-slate-900 p-10 rounded-[48px] border border-gray-100 dark:border-white/5 shadow-premium space-y-8">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500">
-                            <Trophy size={24} />
-                        </div>
-                        <h4 className="text-sm font-black font-outfit text-slate-900 dark:text-white uppercase tracking-wider">Incentive Targets</h4>
-                    </div>
+                {/* Card 3: Milestone Tracker - Replaces Incentive Targets */}
+                <div className="md:col-span-2 bg-slate-50 dark:bg-white/[0.02] rounded-[48px] p-2 border border-slate-100 dark:border-white/5 shadow-inner">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        {earningsData?.milestones?.map((m: any, idx: number) => {
+                            const progress = Math.min((m.currentCount / m.targetCount) * 100, 100);
+                            const remaining = Math.max(m.targetCount - m.currentCount, 0);
 
-                    <div className="flex items-end justify-between gap-10">
-                        <div className="space-y-1">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Direct Referrals</p>
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-4xl font-black font-outfit">{userData?.referrals?.length || 0}</span>
-                                <span className="text-slate-300 text-lg font-bold">/50</span>
-                            </div>
-                        </div>
-                        <div className="flex-1 space-y-3">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600">
-                                    <Sparkles size={16} />
-                                </div>
-                                <div className="space-y-0.5">
-                                    <p className="text-[9px] font-black text-slate-900 dark:text-white uppercase tracking-widest">Next Milestone: Silver Leader</p>
-                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Reward: $100 One-time Bonus + 2% Team Passive</p>
-                                </div>
-                            </div>
-                            <div className="w-full h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-amber-400 rounded-full"
-                                    style={{ width: `${Math.min(((userData?.referrals?.length || 0) / 50) * 100, 100)}%` }}
-                                />
-                            </div>
-                        </div>
-                    </div>
+                            return (
+                                <div key={idx} className="bg-white dark:bg-slate-900 rounded-[40px] p-8 space-y-6 border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden group">
+                                    <div className="flex items-start justify-between">
+                                        <div className="space-y-1">
+                                            <h4 className="text-lg font-black font-outfit uppercase tracking-tighter text-slate-900 dark:text-white">Milestone {idx + 1}</h4>
+                                            <p className="text-2xl font-black text-[#6C63FF] tracking-tighter">${m.reward.toFixed(2)} Reward</p>
+                                        </div>
+                                        <div className={`p-2 rounded-xl ${m.isClaimed ? "bg-emerald-500/10 text-emerald-500" : "bg-blue-500/10 text-blue-500"}`}>
+                                            {m.isClaimed ? <CheckCircle2 size={20} /> : <Clock size={20} />}
+                                        </div>
+                                    </div>
 
-                    <div className="flex items-center justify-between border-t border-slate-50 dark:border-white/5 pt-6">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">Share more to earn more</p>
-                        <Link href="#" className="flex items-center gap-2 text-[10px] font-black text-[#6C63FF] uppercase tracking-widest hover:underline">
-                            Learn More <ArrowRight size={12} />
-                        </Link>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Retention Status</p>
+                                                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">0d</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Verification</p>
+                                                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{m.currentCount}/{m.targetCount} Verified</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Growth</p>
+                                                <p className="text-xs font-bold text-emerald-500">Retained</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Node Status</p>
+                                                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{m.currentCount} Active Nodes</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-2">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className={`text-[9px] font-black uppercase tracking-widest ${m.isClaimed ? "text-emerald-500" : "text-amber-500"}`}>
+                                                    {m.isClaimed ? "Distributed ✓" : "Pending"}
+                                                </span>
+                                                <span className="text-[10px] font-black text-slate-900 dark:text-white font-mono">{progress.toFixed(0)}%</span>
+                                            </div>
+                                            <div className="w-full h-2 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full transition-all duration-1000 ${m.isClaimed ? "bg-emerald-500" : "bg-amber-400"}`}
+                                                    style={{ width: `${progress}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 pt-2 border-t border-slate-50 dark:border-white/5">
+                                        <span className="text-[14px]">🕒</span>
+                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+                                            {remaining > 0 ? `${remaining} more users to reach target` : "Target achieved! Reward credited."}
+                                        </p>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -261,24 +285,26 @@ export default function DashboardPage() {
                             <div className="w-12 h-12 rounded-2xl bg-[#6C63FF]/10 flex items-center justify-center text-[#6C63FF]">
                                 <Activity size={24} />
                             </div>
-                            <h4 className="text-sm font-black font-outfit text-slate-900 dark:text-white uppercase tracking-wider">Auto Pool Income Plan</h4>
+                            <h4 className="text-sm font-black font-outfit text-slate-900 dark:text-white uppercase tracking-wider">Passive Growth Plan</h4>
                         </div>
                         <div className="px-2 py-1 bg-slate-100 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10 flex items-center gap-1.5 grayscale opacity-50">
                             <Zap size={10} fill="currentColor" />
-                            <span className="text-[8px] font-black uppercase tracking-widest leading-none">System Managed</span>
+                            <span className="text-[8px] font-black uppercase tracking-widest leading-none">Global Pool</span>
                         </div>
                     </div>
 
                     <div className="space-y-4">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-l-2 border-[#6C63FF] pl-4 italic">
+                            This pool represents your second system income which will be fully functional in the next update.
+                        </p>
                         <div className="space-y-3 pt-2">
                             {[
-                                "Auto Pool is time-based and company-managed",
-                                "Users are auto-placed after plan activation",
-                                "Income is generated automatically",
-                                "No manual work required",
-                                "No referral dependency",
-                                "Pool structure and placements are not visible",
-                                "Earnings credited directly to wallet"
+                                "System managed spill-over logic",
+                                "Auto-placement after plan activation",
+                                "Income generated through global volume",
+                                "No referral dependency for basic pool",
+                                "Pool structure hidden for system stability",
+                                "Reward payout directly to partner wallet"
                             ].map((text, idx) => (
                                 <div key={idx} className="flex items-start gap-3">
                                     <div className="mt-1 w-1.5 h-1.5 rounded-full bg-[#6C63FF] shrink-0" />
@@ -287,10 +313,6 @@ export default function DashboardPage() {
                             ))}
                         </div>
                     </div>
-
-                    <Link href="/dashboard/autopool" className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest text-right hover:underline flex items-center justify-end gap-2">
-                        View Plan Details <ArrowRight size={12} />
-                    </Link>
                 </div>
             </div>
 

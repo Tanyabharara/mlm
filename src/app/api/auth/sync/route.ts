@@ -2,6 +2,7 @@ import { verifyAuthToken } from "@/lib/auth-server";
 import { NextResponse } from "next/server";
 import {
   getUserByFirebaseUid,
+  getUserByEmail,
   getUserByReferralCode,
   getFirstAdminUser,
   createUser,
@@ -39,15 +40,28 @@ export async function POST(req: Request) {
     let user = await getUserByFirebaseUid(verifiedUid);
 
     if (!user) {
-      const newCode = await generateUniqueReferralCode();
-      user = await createUser({
-        firebaseUid: verifiedUid,
-        email,
-        name: name || "User",
-        photoURL: photoURL || "",
-        referralCode: newCode,
-        role: "USER",
-      });
+      // Check if user exists by email (to handle UID linkage/conflicts)
+      user = await getUserByEmail(email);
+
+      if (user) {
+        // Link the existing record with the new Firebase UID
+        user = await updateUser(user.id, { firebaseUid: verifiedUid });
+      } else {
+        // New user: Create entirely fresh record
+        const newCode = await generateUniqueReferralCode();
+        user = await createUser({
+          firebaseUid: verifiedUid,
+          email,
+          name: name || "User",
+          photoURL: photoURL || "",
+          referralCode: newCode,
+          role: "USER",
+        });
+      }
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: "Failed to sync user data" }, { status: 500 });
     }
 
     if (!user.referredById) {

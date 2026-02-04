@@ -42,6 +42,18 @@ export default function AdminSubscriptionsPage() {
         enabled: !!authUser && userData?.role === 'ADMIN'
     });
 
+    const { data: historyData } = useQuery({
+        queryKey: ["admin", "fulfillment-history"],
+        queryFn: async () => {
+            const token = await authUser!.getIdToken();
+            const res = await fetch("/api/admin/subscriptions?history=true", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return res.json();
+        },
+        enabled: !!authUser && userData?.role === 'ADMIN'
+    });
+
     // Assign Mutation
     const assignMutation = useMutation({
         mutationFn: async (payload: any) => {
@@ -58,6 +70,7 @@ export default function AdminSubscriptionsPage() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["admin", "pending-subscriptions"] });
+            queryClient.invalidateQueries({ queryKey: ["admin", "fulfillment-history"] });
             setSelectedUser(null);
         }
     });
@@ -98,8 +111,8 @@ export default function AdminSubscriptionsPage() {
                             </div>
                             <span className="text-xs font-black uppercase tracking-widest text-[#6C63FF]">Admin Command Center</span>
                         </div>
-                        <h1 className="text-4xl font-black font-outfit tracking-tight text-slate-900 dark:text-white uppercase">OTT Fulfillment</h1>
-                        <p className="text-slate-500 font-medium">Manage and assign credentials to premium growth partners.</p>
+                        <h1 className="text-4xl font-black font-outfit tracking-tight text-slate-900 dark:text-white uppercase">Fulfillment Center</h1>
+                        <p className="text-slate-500 font-medium">Verify payments and distribute OTT credentials to partners.</p>
                     </div>
 
                     <div className="relative">
@@ -121,34 +134,44 @@ export default function AdminSubscriptionsPage() {
                             key={user.id}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="bg-white dark:bg-slate-900 rounded-[40px] border border-slate-100 dark:border-white/5 p-10 space-y-8 shadow-xl hover:shadow-2xl transition-all group"
+                            className="bg-white dark:bg-slate-900 rounded-[40px] border border-slate-100 dark:border-white/5 p-10 space-y-8 shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden"
                         >
-                            <div className="flex justify-between items-start">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-[#6C63FF]/5 rounded-full -mr-12 -mt-12" />
+
+                            <div className="flex justify-between items-start relative z-10">
                                 <div className="space-y-1">
                                     <h3 className="text-xl font-black font-outfit uppercase tracking-tighter text-slate-900 dark:text-white">{user.name}</h3>
                                     <p className="text-xs font-bold text-slate-400 truncate max-w-[150px]">{user.email}</p>
                                 </div>
-                                <div className="px-3 py-1 bg-[#6C63FF]/10 text-[#6C63FF] rounded-full text-[10px] font-black uppercase tracking-widest border border-[#6C63FF]/20">
-                                    Growth Plan
+                                <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${user.paymentStatus === 'VERIFIED'
+                                    ? 'bg-green-500/10 text-green-500 border-green-500/20'
+                                    : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                    }`}>
+                                    {user.paymentStatus === 'VERIFIED' ? "Paid ✓" : "Awaiting Payment"}
                                 </div>
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="space-y-4 relative z-10">
                                 <div className="flex items-center gap-3 text-slate-500">
                                     <Clock size={16} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Joined: {new Date(user.createdAt).toLocaleDateString()}</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest leading-none">Joined: {new Date(user.createdAt).toLocaleDateString()}</span>
                                 </div>
-                                <div className="flex items-center gap-3 text-amber-500">
-                                    <Zap size={16} fill="currentColor" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Pending Activation</span>
+                                <div className="flex items-center gap-3 text-emerald-500">
+                                    <ShieldCheck size={16} />
+                                    <span className="text-[10px] font-black uppercase tracking-widest leading-none">
+                                        {user.paymentStatus === 'VERIFIED' ? "Fulfillment Queue" : "Pending Authentication"}
+                                    </span>
                                 </div>
                             </div>
 
                             <button
                                 onClick={() => setSelectedUser(user)}
-                                className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-lg group-hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+                                className={`w-full py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-lg transition-all flex items-center justify-center gap-2 relative z-10 ${user.paymentStatus === 'VERIFIED'
+                                    ? "bg-[#6C63FF] text-white shadow-[#6C63FF]/20"
+                                    : "bg-slate-900 text-white"
+                                    } hover:scale-[1.02]`}
                             >
-                                Assign Credentials <ChevronRight size={14} />
+                                {user.paymentStatus === 'VERIFIED' ? "Verify & Fulfill" : "Approve & Activate"} <ChevronRight size={14} />
                             </button>
                         </motion.div>
                     ))}
@@ -200,6 +223,7 @@ export default function AdminSubscriptionsPage() {
                                     username: formData.get("username"),
                                     password: formData.get("password"),
                                     link: formData.get("link"),
+                                    paymentIntentId: selectedUser.latestIntentId,
                                 });
                             }}>
                                 <div className="space-y-4">
@@ -221,6 +245,69 @@ export default function AdminSubscriptionsPage() {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* Fulfillment History Table */}
+            <div className="max-w-7xl mx-auto mt-20 pt-10 border-t border-slate-100 dark:border-white/5">
+                <div className="space-y-1 mb-10">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-white">
+                            <CheckCircle2 size={18} />
+                        </div>
+                        <span className="text-xs font-black uppercase tracking-widest text-green-500">Archive</span>
+                    </div>
+                    <h2 className="text-3xl font-black font-outfit uppercase tracking-tighter">Completed Fulfillments</h2>
+                    <p className="text-slate-500 font-medium">History of all digital assets distributed to users.</p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 rounded-[40px] border border-slate-100 dark:border-white/5 overflow-hidden shadow-sm">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-slate-50 dark:bg-white/[0.02]">
+                                <tr className="text-[10px] uppercase text-slate-400 font-black tracking-widest">
+                                    <th className="px-10 py-5">Partner</th>
+                                    <th className="px-10 py-5">Service</th>
+                                    <th className="px-10 py-5">Assigned ID / Email</th>
+                                    <th className="px-10 py-5">Key / Password</th>
+                                    <th className="px-10 py-5 text-right">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50 dark:divide-white/5">
+                                {historyData?.history?.map((item: any) => (
+                                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors group">
+                                        <td className="px-10 py-6">
+                                            <div className="flex flex-col">
+                                                <span className="font-black text-sm text-slate-900 dark:text-white uppercase tracking-tighter">{item.userName}</span>
+                                                <span className="text-[10px] font-bold text-slate-400 lowercase">{item.userEmail}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-10 py-6">
+                                            <span className="px-3 py-1 bg-[#6C63FF]/10 text-[#6C63FF] rounded-full text-[10px] font-black uppercase tracking-widest border border-[#6C63FF]/20">
+                                                {item.platform}
+                                            </span>
+                                        </td>
+                                        <td className="px-10 py-6 font-mono text-xs text-slate-600 dark:text-slate-400">
+                                            {item.username || "—"}
+                                        </td>
+                                        <td className="px-10 py-6 font-mono text-xs text-slate-600 dark:text-slate-400">
+                                            {item.password || "—"}
+                                        </td>
+                                        <td className="px-10 py-6 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                            {new Date(item.createdAt).toLocaleDateString()}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {(!historyData?.history || historyData.history.length === 0) && (
+                                    <tr>
+                                        <td colSpan={5} className="px-10 py-20 text-center text-slate-300 font-bold uppercase tracking-widest text-xs">
+                                            No fulfillment history recorded yet.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

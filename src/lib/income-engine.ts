@@ -20,7 +20,9 @@ export async function distributeIncome(purchaseId: string) {
   const planPrice = Number(plan.price);
   const networkWorkingAmount = planPrice * 0.9;
 
-  await distributeNetworkRewards(user.id, networkWorkingAmount);
+  // Level income is disabled as per new model where Milestones are the Direct Income source
+  // await distributeNetworkRewards(user.id, networkWorkingAmount);
+
   await enterAutoPool(user.id, "1");
 
   // Check milestones for the immediate referrer

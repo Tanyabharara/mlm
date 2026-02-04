@@ -16,7 +16,12 @@ import {
     Wallet,
     DollarSign,
     Percent,
-    ArrowRight
+    ArrowRight,
+    Monitor,
+    Zap,
+    ArrowUpRight,
+    ArrowDownRight,
+    History
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { notFound } from "next/navigation";
@@ -26,6 +31,8 @@ export default function AdminFinancePage() {
     const queryClient = useQueryClient();
     const [percentages, setPercentages] = useState<Record<string, number>>({});
     const [isDirty, setIsDirty] = useState(false);
+    const [page, setPage] = useState(1);
+    const limit = 10;
 
     // Fetch Configs
     const { data: financeData, isLoading: financeLoading } = useQuery({
@@ -62,11 +69,24 @@ export default function AdminFinancePage() {
         enabled: !!authUser && userData?.role === 'ADMIN'
     });
 
-    const { data: paymentsData } = useQuery({
-        queryKey: ["admin", "recent-payments"],
+    const { data: paymentsData, isLoading: paymentsLoading } = useQuery({
+        queryKey: ["admin", "recent-payments", page],
         queryFn: async () => {
             const token = await authUser!.getIdToken();
-            const res = await fetch("/api/admin/payments/recent", {
+            const res = await fetch(`/api/admin/payments/recent?page=${page}&limit=${limit}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return res.json();
+        },
+        enabled: !!authUser && userData?.role === 'ADMIN'
+    });
+
+    // Fetch Global Transaction History
+    const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
+        queryKey: ["admin", "all-transactions"],
+        queryFn: async () => {
+            const token = await authUser!.getIdToken();
+            const res = await fetch(`/api/admin/transactions?limit=20`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.json();
@@ -144,8 +164,8 @@ export default function AdminFinancePage() {
                             </div>
                             <span className="text-xs font-black uppercase tracking-widest text-[#6C63FF]">Financial Control</span>
                         </div>
-                        <h1 className="text-4xl font-black font-outfit tracking-tight text-slate-900 dark:text-white uppercase">Reward Matrix</h1>
-                        <p className="text-slate-500 font-medium">Customize direct income percentages for each referral level.</p>
+                        <h1 className="text-4xl font-black font-outfit tracking-tight text-slate-900 dark:text-white uppercase">Finance Dashboard</h1>
+                        <p className="text-slate-500 font-medium">Monitor revenue streams and split fund allocations.</p>
                     </div>
 
                     <button
@@ -158,15 +178,61 @@ export default function AdminFinancePage() {
                         `}
                     >
                         {updateMutation.isPending ? <Loader2 className="animate-spin" /> : <Save size={16} />}
-                        Save Financial Control
+                        Save Config
                     </button>
+                </div>
+
+                {/* Financial Summary Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Wallet 1: Total Collected */}
+                    <div className="bg-slate-900 p-8 rounded-[40px] text-white space-y-4 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-white/10 transition-all" />
+                        <div className="flex items-center gap-2 relative z-10">
+                            <Wallet size={16} className="text-[#6C63FF]" />
+                            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Total Collection</span>
+                        </div>
+                        <div>
+                            <h3 className="text-4xl font-black font-outfit tracking-tighter relative z-10">
+                                ${paymentsData?.totalCollected?.toFixed(2) || "0.00"}
+                            </h3>
+                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mt-1">Lifetime Gross Revenue</p>
+                        </div>
+                    </div>
+
+                    {/* Wallet 2: OTT Service Fund */}
+                    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 p-8 rounded-[40px] space-y-4 shadow-premium group">
+                        <div className="flex items-center gap-2">
+                            <Monitor size={16} className="text-purple-500" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">OTT Service Fund</span>
+                        </div>
+                        <div>
+                            <h3 className="text-4xl font-black font-outfit tracking-tighter text-slate-900 dark:text-white">
+                                ${paymentsData?.totalOttFund?.toFixed(2) || "0.00"}
+                            </h3>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">$5.00 Allocated per User</p>
+                        </div>
+                    </div>
+
+                    {/* Wallet 3: Platform Pool */}
+                    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 p-8 rounded-[40px] space-y-4 shadow-premium group">
+                        <div className="flex items-center gap-2">
+                            <Zap size={16} className="text-amber-500" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Platform Pool</span>
+                        </div>
+                        <div>
+                            <h3 className="text-4xl font-black font-outfit tracking-tighter text-slate-900 dark:text-white">
+                                ${paymentsData?.totalPlatformPool?.toFixed(2) || "0.00"}
+                            </h3>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">$1.00 Allocated per User</p>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Info Card */}
                 <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-6 rounded-3xl flex gap-4 items-center">
                     <AlertCircle className="text-amber-500" size={24} />
-                    <p className="text-sm font-bold text-amber-700 dark:text-amber-400">
-                        Changes to these percentages will apply to all <span className="underline">future</span> plan activations. Past transactions remain unchanged.
+                    <p className="text-sm font-bold text-amber-700 dark:text-amber-400 leading-tight">
+                        Allocation Rule: Every $6.00 payment is automatically split into <span className="underline font-black">$5.00 for OTT Service</span> and <span className="underline font-black">$1.00 for the platform pool</span>.
                     </p>
                 </div>
 
@@ -283,8 +349,12 @@ export default function AdminFinancePage() {
                                     <tr key={payment.id} className="group">
                                         <td className="py-4">
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-slate-900 dark:text-white">{payment.user.name || "Anonymous User"}</span>
-                                                <span className="text-[10px] font-medium text-slate-400">{payment.user.email}</span>
+                                                <span className="text-sm font-bold text-slate-900 dark:text-white">
+                                                    {payment.user?.name || "Anonymous User"}
+                                                </span>
+                                                <span className="text-[10px] font-medium text-slate-400">
+                                                    {payment.user?.email || "No email available"}
+                                                </span>
                                             </div>
                                         </td>
                                         <td className="py-4">
@@ -316,9 +386,110 @@ export default function AdminFinancePage() {
                                         </td>
                                     </tr>
                                 ))}
-                                {!paymentsData?.payments?.length && (
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Pagination */}
+                    {paymentsData?.totalPages > 1 && (
+                        <div className="pt-6 flex items-center justify-between border-t border-slate-50 dark:border-white/5">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                                Page {page} of {paymentsData.totalPages} ({paymentsData.totalCount} total)
+                            </p>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={page === 1}
+                                    className="px-4 py-2 bg-slate-50 dark:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-30 transition-all hover:bg-slate-100"
+                                >
+                                    Previous
+                                </button>
+                                <button
+                                    onClick={() => setPage(p => Math.min(paymentsData.totalPages, p + 1))}
+                                    disabled={page === paymentsData.totalPages}
+                                    className="px-4 py-2 bg-slate-50 dark:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-30 transition-all hover:bg-slate-100"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Global Transaction Ledger */}
+                <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-white/5 p-8 shadow-sm space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                                <History size={20} />
+                            </div>
+                            <h3 className="text-2xl font-black font-outfit tracking-tight text-slate-900 dark:text-white uppercase">Global Transaction Ledger</h3>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="text-left border-b border-slate-50 dark:border-white/5">
+                                    <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Transaction</th>
+                                    <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-slate-400">User / Wallet</th>
+                                    <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Type</th>
+                                    <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Amount</th>
+                                    <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Time</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50 dark:divide-white/5">
+                                {transactionsData?.transactions?.map((tx: any) => (
+                                    <tr key={tx.id} className="group">
+                                        <td className="py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${tx.displayType === 'CREDIT' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                    {tx.displayType === 'CREDIT' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-slate-900 dark:text-white">
+                                                        {tx.description || "System Transaction"}
+                                                    </span>
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                        ID: {tx.id.slice(-8)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="py-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-bold text-slate-900 dark:text-white">
+                                                    {tx.user?.name || "System"}
+                                                </span>
+                                                <span className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest">
+                                                    Source: {tx.category || "General"} Wallet
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="py-4">
+                                            <span className={`px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-widest
+                                                ${tx.displayType === 'CREDIT' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}
+                                            `}>
+                                                {tx.displayType}
+                                            </span>
+                                        </td>
+                                        <td className="py-4">
+                                            <span className={`text-sm font-black ${tx.displayType === 'CREDIT' ? 'text-green-500' : 'text-red-500'}`}>
+                                                {tx.displayType === 'CREDIT' ? '+' : '-'}${Number(tx.amount).toFixed(2)}
+                                            </span>
+                                        </td>
+                                        <td className="py-4">
+                                            <span className="text-xs text-slate-400 font-medium">
+                                                {new Date(tx.createdAt).toLocaleString()}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {(!transactionsData?.transactions || transactionsData.transactions.length === 0) && (
                                     <tr>
-                                        <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">No recent payment activity found.</td>
+                                        <td colSpan={5} className="py-8 text-center text-slate-400 font-bold text-xs uppercase tracking-widest italic">
+                                            No transaction data available.
+                                        </td>
                                     </tr>
                                 )}
                             </tbody>

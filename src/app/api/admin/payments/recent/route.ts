@@ -1,15 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminRequest } from "@/lib/admin-auth";
-import { getRecentPaymentIntents, getUserById } from "@/lib/firebase-db";
+import { getUserById, firestore as db, getTotalMilestonePayouts } from "@/lib/firebase-db";
 
 export async function GET(req: NextRequest) {
   try {
     const admin = await verifyAdminRequest(req);
     if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const payments = await getRecentPaymentIntents(10);
+    const searchParams = req.nextUrl.searchParams;
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "10");
+    const skip = (page - 1) * limit;
+
+    // Get ALL payments for revenue calculation and total count
+    const allIntentsSnapshot = await db.collection("paymentIntents").orderBy("createdAt", "desc").get();
+    const allIntents = allIntentsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+
+    const verifiedPayments = allIntents.filter((p: any) => p.status === "VERIFIED");
+    const totalCollected = verifiedPayments.reduce((acc: number, p: any) => acc + Number(p.amount), 0);
+    const totalMilestonePayouts = await getTotalMilestonePayouts();
+
+    // Splitting logic: $5 for OTT, $1 for Platform Pool
+    const totalOttFund = verifiedPayments.length * 5;
+    const totalPlatformPool = (verifiedPayments.length * 1) - totalMilestonePayouts;
+
+    const paginatedIntents = allIntents.slice(skip, skip + limit);
+
     const paymentsWithUser = await Promise.all(
-      payments.map(async (p: any) => {
+      paginatedIntents.map(async (p: any) => {
         const user = p.userId ? await getUserById(p.userId) : null;
         return {
           ...p,
@@ -18,7 +36,15 @@ export async function GET(req: NextRequest) {
       })
     );
 
-    return NextResponse.json({ payments: paymentsWithUser });
+    return NextResponse.json({
+      payments: paymentsWithUser,
+      totalCollected,
+      totalOttFund,
+      totalPlatformPool,
+      totalCount: allIntents.length,
+      page,
+      totalPages: Math.ceil(allIntents.length / limit)
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

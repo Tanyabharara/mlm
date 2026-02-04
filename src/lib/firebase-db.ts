@@ -468,6 +468,20 @@ export async function getTransactions(userId: string, limit: number = 10) {
   }
 }
 
+export async function getAllTransactions(limit: number = 50) {
+  try {
+    const snapshot = await db
+      .collection("transactions")
+      .orderBy("createdAt", "desc")
+      .limit(limit)
+      .get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error fetching all transactions:", error);
+    return [];
+  }
+}
+
 export async function getReferrals(userId: string, depth: number = 3) {
   const cacheKey = getCacheKey("referrals", userId, `depth:${depth}`);
   const cached = getCached(cacheKey);
@@ -805,5 +819,10 @@ export async function milestoneExists(userId: string, slab: number): Promise<boo
     .limit(1)
     .get();
   return !snapshot.empty;
+}
+
+export async function getTotalMilestonePayouts(): Promise<number> {
+  const snapshot = await db.collection("milestones").get();
+  return snapshot.docs.reduce((acc, doc) => acc + (Number(doc.data().amount) || 0), 0);
 }
 
