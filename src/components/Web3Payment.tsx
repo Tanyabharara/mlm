@@ -9,7 +9,7 @@ import { parseUnits } from 'viem';
 import { Loader2, Zap, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const USDT_ADDRESS = '0x55d398326f99059fF775485246999027B3197955'; // Mainnet USDT (BSC)
+const USDT_ADDRESS = '0x337610d27c682E347C9cD60BD4b3b107C9d34dDd'; // BSC Testnet Mock USDT
 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 

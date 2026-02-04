@@ -14,11 +14,54 @@ import {
     ChevronDown,
     XCircle,
     CheckCircle2,
-    DollarSign
+    DollarSign,
+    Loader2,
+    Trophy,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/context/AuthContext";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function AutoPoolPage() {
+    const { user } = useAuth();
+    const queryClient = useQueryClient();
+
+    const { data, isLoading } = useQuery({
+        queryKey: ["autopool", user?.uid],
+        queryFn: async () => {
+            const token = await user!.getIdToken();
+            const res = await fetch("/api/user/autopool", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error("Failed to fetch");
+            return res.json();
+        },
+        enabled: !!user
+    });
+
+    const actionMutation = useMutation({
+        mutationFn: async ({ entryId, action }: { entryId: string, action: string }) => {
+            const token = await user!.getIdToken();
+            const res = await fetch("/api/user/autopool", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ entryId, action })
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || "Action failed");
+            }
+            return res.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["autopool"] });
+            queryClient.invalidateQueries({ queryKey: ["earnings"] });
+        }
+    });
+
     return (
         <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-12 animate-in fade-in duration-700 pb-24">
             {/* Header Area */}
@@ -40,6 +83,104 @@ export default function AutoPoolPage() {
                     <ShieldCheck size={14} /> System Verified
                 </div>
             </div>
+
+            {/* Live Status Section */}
+            {data?.pools && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {data.pools.map((pool: any) => {
+                        const isActive = pool.status === "ACTIVE" || pool.status === "COMPLETED";
+                        const isCompleted = pool.status === "COMPLETED";
+                        const hasDecision = pool.upgradeChoice != null;
+
+                        return (
+                            <motion.div
+                                key={pool.id}
+                                layout
+                                className={`p-8 rounded-[40px] border transition-all ${isActive
+                                    ? "bg-white dark:bg-slate-900 border-gray-100 dark:border-white/5 shadow-xl"
+                                    : "bg-slate-50/50 dark:bg-white/[0.02] border-dashed border-slate-200 dark:border-white/10 opacity-60"
+                                    }`}
+                            >
+                                <div className="space-y-6">
+                                    <div className="flex justify-between items-start">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                {pool.name}
+                                            </p>
+                                            <h4 className="text-xl font-black text-slate-900 dark:text-white">
+                                                Status: {pool.status}
+                                            </h4>
+                                        </div>
+                                        {isActive && (
+                                            <div className={`p-2 rounded-xl ${isCompleted ? "bg-green-500/10 text-green-500" : "bg-blue-500/10 text-blue-500"}`}>
+                                                {isCompleted ? <Trophy size={20} /> : <Clock size={20} />}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {isActive && !isCompleted && (
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                <span>3x3 Matrix Progress</span>
+                                                <span>{Math.round(((pool.stats.l1 + pool.stats.l2 + pool.stats.l3) / 39) * 100)}%</span>
+                                            </div>
+                                            <div className="h-2 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-[#6C63FF] transition-all duration-1000"
+                                                    style={{ width: `${Math.min(((pool.stats.l1 + pool.stats.l2 + pool.stats.l3) / 39) * 100, 100)}%` }}
+                                                />
+                                            </div>
+                                            <div className="flex gap-4 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                                <span>L1: {pool.stats.l1}/3</span>
+                                                <span>L2: {pool.stats.l2}/9</span>
+                                                <span>L3: {pool.stats.l3}/27</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {isCompleted && !hasDecision && (
+                                        <div className="pt-4 space-y-3">
+                                            <p className="text-[11px] font-bold text-slate-500 leading-relaxed">
+                                                Congratulations! Pool complete. Would you like to re-invest $10 to enter Pool 2, or claim your total earnings?
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <button
+                                                    onClick={() => actionMutation.mutate({ entryId: pool.tree.id, action: "UPGRADE" })}
+                                                    disabled={actionMutation.isPending}
+                                                    className="py-3 bg-[#6C63FF] hover:bg-[#5B52E5] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50"
+                                                >
+                                                    {actionMutation.isPending ? "Processing..." : "Upgrade"}
+                                                </button>
+                                                <button
+                                                    onClick={() => actionMutation.mutate({ entryId: pool.tree.id, action: "CLAIM" })}
+                                                    disabled={actionMutation.isPending}
+                                                    className="py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50"
+                                                >
+                                                    Claim
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {hasDecision && (
+                                        <div className="pt-4 flex items-center gap-2 text-[#4CAF50]">
+                                            <CheckCircle2 size={16} />
+                                            <span className="text-[10px] font-black uppercase tracking-widest">Decision: {pool.upgradeChoice}</span>
+                                        </div>
+                                    )}
+
+                                    {!isActive && (
+                                        <div className="flex items-center gap-2 text-slate-300">
+                                            <XCircle size={16} />
+                                            <span className="text-[10px] font-black uppercase tracking-widest italic">Awaiting Sequence</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </motion.div>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* Income Card Description Section */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -84,7 +225,7 @@ export default function AutoPoolPage() {
                                     <TrendingUp size={14} /> System Logic
                                 </p>
                                 <p className="text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
-                                    After completion, users are <span className="text-[#6C63FF] font-bold">automatically shifted</span> to the next pool tier. This execution is handled entirely by the systemic arbiter logic.
+                                    After completion, you have the <span className="text-[#6C63FF] font-bold">freedom of choice</span>: Shift your earnings to enter the next higher pool tier for massive rewards, or claim the total amount directly to your wallet.
                                 </p>
                             </div>
                         </div>
@@ -113,8 +254,8 @@ export default function AutoPoolPage() {
                         </thead>
                         <tbody className="divide-y divide-gray-50 dark:divide-white/5">
                             {[
-                                { id: 1, fee: 1, l1: 0.3, l2: 1.8, l3: 8.1, total: 10.2, next: "Auto Shift to Pool 2" },
-                                { id: 2, fee: 10, l1: 3, l2: 18, l3: 81, total: 102, next: "Auto Shift to Pool 3" },
+                                { id: 1, fee: 1, l1: 0.3, l2: 1.8, l3: 8.1, total: 10.2, next: "Decision: Upgrade or Claim" },
+                                { id: 2, fee: 10, l1: 3, l2: 18, l3: 81, total: 102, next: "Decision: Upgrade or Claim" },
                                 { id: 3, fee: 100, l1: 30, l2: 180, l3: 810, total: 1020, next: "Ecosystem Mastery" }
                             ].map((pool) => (
                                 <tr key={pool.id} className="group hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">

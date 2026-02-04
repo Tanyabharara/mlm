@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         config: {
           treasuryAddress: process.env.TREASURY_WALLET_ADDRESS || "0xYourTreasuryWalletAddressHere",
-          planPrice: "600",
+          planPrice: "6",
         },
       });
     }

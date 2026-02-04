@@ -147,10 +147,10 @@ export default function EarningsPage() {
                                 <div className="flex justify-between items-start">
                                     <div className="space-y-1">
                                         <p className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest">Milestone {idx + 1}</p>
-                                        <h4 className="text-2xl font-black text-slate-900 dark:text-white">${Number(m.reward) / 100} <span className="text-xs font-bold text-slate-400">Reward</span></h4>
+                                        <h4 className="text-2xl font-black text-slate-900 dark:text-white">${Number(m.reward).toFixed(2)} <span className="text-xs font-bold text-slate-400">Reward</span></h4>
                                     </div>
                                     <div className="px-3 py-1 bg-blue-50 dark:bg-blue-900/20 text-[#6C63FF] border border-blue-100 dark:border-blue-800/50 rounded-full text-[8px] font-black uppercase tracking-widest">
-                                        Retention Status: 60d
+                                        Retention Status: 0d
                                     </div>
                                 </div>
 
@@ -185,12 +185,14 @@ export default function EarningsPage() {
 
                                 <div className="flex items-center gap-2">
                                     <div className="w-4 h-4 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center">
-                                        <span className="text-[10px] text-slate-400">🕒</span>
+                                        <span className="text-[10px] text-slate-400">{m.isClaimed ? "✅" : "🕒"}</span>
                                     </div>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                                        {m.currentCount >= m.targetCount
-                                            ? "Eligibility met - Processing"
-                                            : `${m.targetCount - m.currentCount} more users to reach target`}
+                                    <p className={`text-[9px] font-bold uppercase tracking-widest ${m.isClaimed ? "text-green-500" : "text-slate-400"}`}>
+                                        {m.isClaimed
+                                            ? "Reward Successfully Claimed"
+                                            : m.currentCount >= m.targetCount
+                                                ? "Eligibility met - Processing"
+                                                : `${m.targetCount - m.currentCount} more users to reach target`}
                                     </p>
                                 </div>
                             </motion.div>

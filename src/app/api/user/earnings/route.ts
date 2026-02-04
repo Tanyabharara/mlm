@@ -86,16 +86,20 @@ export async function GET() {
       .reduce((acc: number, t: any) => acc + Number(t.amount), 0);
 
     const MILESTONE_SLABS = [
-      { target: 10, reward: 20 },
-      { target: 20, reward: 30 },
-      { target: 50, reward: 40 },
+      { target: 10, reward: 0.2 },
+      { target: 20, reward: 0.3 },
+      { target: 50, reward: 0.4 },
     ];
 
     const now = new Date();
     const totalActiveReferrals = referrals.length;
     const activeRetainedReferralsCount = referrals.filter((ref: any) => {
-      const daysSinceJoined = (now.getTime() - new Date(ref.createdAt).getTime()) / (1000 * 60 * 60 * 24);
-      return daysSinceJoined >= 60 && ref.planId != null;
+      const createdAt = ref.createdAt?.toDate ? ref.createdAt.toDate() : new Date(ref.createdAt);
+      const daysSinceJoined = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+      // Count as verified if they have a planId OR if they have deposited at least $1 (even if planId didn't sync)
+      const hasPlan = ref.planId && ref.planId !== "";
+      const hasPaid = Number(ref.walletBalance) >= 1;
+      return daysSinceJoined >= 0 && (hasPlan || hasPaid);
     }).length;
 
     const milestoneProgress = MILESTONE_SLABS.map((slab) => ({
@@ -104,7 +108,7 @@ export async function GET() {
       targetCount: slab.target,
       currentCount: activeRetainedReferralsCount,
       potentialCount: totalActiveReferrals,
-      isClaimed: milestones.some((m: any) => m.slab === slab.target),
+      isClaimed: milestones.some((m: any) => Number(m.slab) === Number(slab.target)),
     }));
 
     const allPoolsData = allPoolConfigs.map((pool: any) => {

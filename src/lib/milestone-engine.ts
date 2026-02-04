@@ -9,52 +9,60 @@ import {
 } from "./firebase-db";
 
 const MILESTONE_SLABS = [
-  { target: 10, reward: 20 },
-  { target: 20, reward: 30 },
-  { target: 50, reward: 40 },
+  { target: 10, reward: 0.2 },
+  { target: 20, reward: 0.3 },
+  { target: 50, reward: 0.4 },
 ];
 
-const RETENTION_DAYS = 60;
+const RETENTION_DAYS = 0; // Reduced from 60 for testing/sandbox progression
 
 export async function processMilestones() {
   console.log("Starting Milestone Processing...");
-
   const users = await getAllUsers();
-
   for (const user of users) {
-    const [referrals, milestones] = await Promise.all([
-      getDirectReferrals(user.id, 500),
-      getMilestonesByUser(user.id),
-    ]);
+    await processUserMilestones(user.id);
+  }
+  console.log("Milestone Processing Completed.");
+}
 
-    const refsWithPlan = referrals.filter((ref: any) => !ref.isBlocked && ref.planId != null);
-    const now = new Date();
-    const activeRetainedReferrals = refsWithPlan.filter((ref: any) => {
-      const daysSinceJoined = (now.getTime() - new Date(ref.createdAt).getTime()) / (1000 * 60 * 60 * 24);
-      return daysSinceJoined >= RETENTION_DAYS;
-    });
-    const referralCount = activeRetainedReferrals.length;
-    const achievedSlabs = milestones.map((m: any) => m.slab);
+export async function processUserMilestones(userId: string) {
+  const [referrals, milestones] = await Promise.all([
+    getDirectReferrals(userId, 500),
+    getMilestonesByUser(userId),
+  ]);
 
-    for (const slab of MILESTONE_SLABS) {
-      if (referralCount >= slab.target && !achievedSlabs.includes(slab.target)) {
-        const exists = await milestoneExists(user.id, slab.target);
-        if (exists) continue;
+  const now = new Date();
+  const activeRetainedReferrals = referrals.filter((ref: any) => {
+    if (ref.isBlocked) return false;
+    const createdAt = ref.createdAt?.toDate ? ref.createdAt.toDate() : new Date(ref.createdAt);
+    const daysSinceJoined = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
 
-        console.log(`User ${user.id} (${user.email}) achieved slab ${slab.target} with ${referralCount} retained referrals.`);
+    const hasPlan = ref.planId && ref.planId !== "";
+    const hasPaid = Number(ref.walletBalance) >= 1;
 
-        await createMilestone({ userId: user.id, slab: slab.target, amount: slab.reward });
-        await updateWalletBalance(user.id, slab.reward, "increment");
-        await createTransaction({
-          userId: user.id,
-          amount: slab.reward,
-          type: "CREDIT",
-          category: "MILESTONE_INCOME",
-          description: `Target Incentive Reward for achieving ${slab.target} direct referrals (Retained for 2 months)`,
-        });
-      }
+    return daysSinceJoined >= RETENTION_DAYS && (hasPlan || hasPaid);
+  });
+
+  const referralCount = activeRetainedReferrals.length;
+  const achievedSlabs = milestones.map((m: any) => m.slab);
+
+  for (const slab of MILESTONE_SLABS) {
+    if (referralCount >= slab.target && !achievedSlabs.includes(slab.target)) {
+      const exists = await milestoneExists(userId, slab.target);
+      if (exists) continue;
+
+      console.log(`[Milestone] User ${userId} achieved target ${slab.target} with ${referralCount} referrals.`);
+
+      await createMilestone({ userId, slab: slab.target, amount: slab.reward });
+      await updateWalletBalance(userId, slab.reward, "increment");
+      await createTransaction({
+        userId,
+        amount: slab.reward,
+        type: "CREDIT",
+        category: "MILESTONE_INCOME",
+        description: `Target Incentive Reward for achieving ${slab.target} direct referrals`,
+      });
+      console.log(`[Milestone] Reward credited for slab ${slab.target} to user ${userId}`);
     }
   }
-
-  console.log("Milestone Processing Completed.");
 }

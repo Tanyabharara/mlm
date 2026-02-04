@@ -1,4 +1,5 @@
 import { enterAutoPool } from "./new-income-engine";
+import { processUserMilestones } from "./milestone-engine";
 import {
   getPurchase,
   getUserById,
@@ -21,6 +22,11 @@ export async function distributeIncome(purchaseId: string) {
 
   await distributeNetworkRewards(user.id, networkWorkingAmount);
   await enterAutoPool(user.id, "1");
+
+  // Check milestones for the immediate referrer
+  if (user.referredById) {
+    await processUserMilestones(user.referredById);
+  }
 }
 
 async function distributeNetworkRewards(userId: string, amount: number) {

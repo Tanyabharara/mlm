@@ -20,13 +20,15 @@ import { motion } from "framer-motion";
 import { Suspense } from "react";
 
 function LoginContent() {
-    const { signInWithGoogle } = useAuth();
+    const { signUpWithEmail, signInWithGoogle } = useAuth();
     const [referralCode, setReferralCode] = useState("");
+    const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [isVerifying, setIsVerifying] = useState(false);
     const [isVerified, setIsVerified] = useState(false);
     const [referrerName, setReferrerName] = useState("");
+    const [status, setStatus] = useState<{ type: 'error' | 'success' | 'loading', message: string } | null>(null);
 
     const searchParams = useSearchParams();
 
@@ -72,6 +74,19 @@ function LoginContent() {
         const timeoutId = setTimeout(verifyCode, 500);
         return () => clearTimeout(timeoutId);
     }, [referralCode]);
+
+    const handleSignup = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!isVerified || !fullName || !email || !password) return;
+
+        setStatus({ type: 'loading', message: 'Creating account...' });
+        try {
+            await signUpWithEmail(fullName, email, password, referralCode);
+            setStatus({ type: 'success', message: 'Account created! Redirecting...' });
+        } catch (error: any) {
+            setStatus({ type: 'error', message: error.message || 'Signup failed' });
+        }
+    };
 
     return (
         <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-white font-sans">
@@ -133,7 +148,7 @@ function LoginContent() {
                         </p>
                     </div>
 
-                    <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+                    <form className="space-y-6" onSubmit={handleSignup}>
                         <div className="space-y-4">
                             {/* Referral ID */}
                             <div className="space-y-2">
@@ -181,6 +196,26 @@ function LoginContent() {
                                 )}
                             </div>
 
+                            {/* Full Name */}
+                            <div className="space-y-2">
+                                <label className="text-xs font-black uppercase tracking-widest text-[#64748B]">
+                                    Full Name
+                                </label>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <UserPlus size={18} className="text-[#94A3B8] group-focus-within:text-[#6C63FF] transition-colors" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={fullName}
+                                        onChange={(e) => setFullName(e.target.value)}
+                                        placeholder="John Doe"
+                                        className="block w-full pl-12 py-4 bg-[#F8FAFC] border border-[#F1F5F9] rounded-2xl text-[#0F172A] font-bold focus:outline-none focus:ring-2 focus:ring-[#6C63FF]/20 focus:border-[#6C63FF] transition-all"
+                                    />
+                                </div>
+                            </div>
+
                             {/* Email Address */}
                             <div className="space-y-2">
                                 <label className="text-xs font-black uppercase tracking-widest text-[#64748B]">
@@ -192,6 +227,7 @@ function LoginContent() {
                                     </div>
                                     <input
                                         type="email"
+                                        required
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="name@company.com"
@@ -211,6 +247,8 @@ function LoginContent() {
                                     </div>
                                     <input
                                         type="password"
+                                        required
+                                        minLength={6}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="••••••••"
@@ -220,19 +258,28 @@ function LoginContent() {
                             </div>
                         </div>
 
+                        {status && (
+                            <div className={`p-4 rounded-2xl text-xs font-black uppercase tracking-widest text-center ${status.type === 'error' ? 'bg-red-500/10 text-red-500' :
+                                status.type === 'loading' ? 'bg-[#6C63FF]/10 text-[#6C63FF]' :
+                                    'bg-[#4CAF50]/10 text-[#4CAF50]'
+                                }`}>
+                                {status.message}
+                            </div>
+                        )}
+
                         <p className="text-[10px] text-center text-[#94A3B8] leading-relaxed">
                             By signing up, you agree to our <Link href="#" className="underline">Terms of Service</Link> and <Link href="#" className="underline">Privacy Policy</Link>.
                         </p>
 
                         <button
-                            onClick={() => isVerified && signInWithGoogle(referralCode)}
-                            disabled={!isVerified}
-                            className={`w-full py-5 rounded-2xl font-black uppercase tracking-[0.15em] flex items-center justify-center gap-3 transition-all active:scale-[0.98] ${isVerified
+                            type="submit"
+                            disabled={!isVerified || status?.type === 'loading'}
+                            className={`w-full py-5 rounded-2xl font-black uppercase tracking-[0.15em] flex items-center justify-center gap-3 transition-all active:scale-[0.98] ${isVerified && status?.type !== 'loading'
                                 ? "bg-[#6C63FF] hover:bg-[#5B52E5] text-white shadow-xl shadow-[#6C63FF]/20"
                                 : "bg-slate-200 text-slate-400 cursor-not-allowed"
                                 }`}
                         >
-                            {isVerified ? "Join Now 🚀" : "Enter Referral to Join"}
+                            {status?.type === 'loading' ? "Processing..." : isVerified ? "Join Now 🚀" : "Enter Referral to Join"}
                         </button>
 
                         <div className="relative py-4">

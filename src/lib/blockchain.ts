@@ -13,8 +13,8 @@ import {
   createPurchase
 } from "./firebase-db";
 
-const BSC_RPC_URL = process.env.BSC_RPC_URL || "https://bsc-dataseed.binance.org/";
-const USDT_CONTRACT = "0x55d398326f99059fF775485246999027B3197955";
+const BSC_RPC_URL = "https://data-seed-prebsc-1-s1.binance.org:8545/";
+const USDT_CONTRACT = "0x337610d27c682E347C9cD60BD4b3b107C9d34dDd";
 
 const USDT_ABI = [
   "event Transfer(address indexed from, address indexed to, uint256 value)"
@@ -26,19 +26,19 @@ async function getPlatformConfig() {
 
   if (!config || !config.value) return {
     treasuryAddress: envAddress || '0xYourTreasuryWalletAddressHere',
-    planPrice: 600
+    planPrice: 6
   };
 
   try {
     const parsed = JSON.parse(config.value);
     return {
       treasuryAddress: parsed.treasuryAddress || envAddress || '0xYourTreasuryWalletAddressHere',
-      planPrice: parseFloat(parsed.planPrice || '600')
+      planPrice: parseFloat(parsed.planPrice || '6')
     };
   } catch (e) {
     return {
       treasuryAddress: envAddress || '0xYourTreasuryWalletAddressHere',
-      planPrice: 600
+      planPrice: 6
     };
   }
 }

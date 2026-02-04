@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, User, signInWithPopup, signOut } from "firebase/auth";
+import { onAuthStateChanged, User, signInWithPopup, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth, googleProvider, isFirebaseConfigured } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
@@ -9,6 +9,8 @@ interface AuthContextType {
   userData: any | null;
   loading: boolean;
   signInWithGoogle: (referralCode?: string) => Promise<void>;
+  signUpWithEmail: (name: string, email: string, password: string, referralCode: string) => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUserData: () => Promise<void>;
 }
@@ -62,13 +64,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             body: JSON.stringify({
               uid: authUser.uid,
               email: authUser.email,
-              name: authUser.displayName,
+              name: authUser.displayName || (typeof window !== 'undefined' ? localStorage.getItem("pendingName") : null),
               photoURL: authUser.photoURL,
               // Note: On reconnect, we might not have the referral code in state, 
               // but sync handles existing user logic.
               referralCode: typeof window !== 'undefined' ? localStorage.getItem("referralCode") : null,
             }),
           });
+
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem("pendingName");
+          }
+
           await fetchUserData(authUser);
         } catch (e) {
           console.error("Auth sync error", e);
@@ -101,6 +108,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const signUpWithEmail = async (name: string, email: string, password: string, referralCode: string) => {
+    if (!auth || !isFirebaseConfigured) {
+      alert("Application is not properly configured.");
+      return;
+    }
+
+    if (referralCode) {
+      localStorage.setItem("referralCode", referralCode);
+    }
+
+    localStorage.setItem("pendingName", name);
+
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+
+      // Update the profile with the name immediately
+      await updateProfile(result.user, { displayName: name });
+
+      // Success will trigger onAuthStateChanged
+      router.push("/dashboard");
+    } catch (error: any) {
+      console.error("Error signing up", error);
+      throw error;
+    }
+  };
+
+  const signInWithEmail = async (email: string, password: string) => {
+    if (!auth || !isFirebaseConfigured) {
+      alert("Application is not properly configured.");
+      return;
+    }
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push("/dashboard");
+    } catch (error: any) {
+      console.error("Error signing in", error);
+      throw error;
+    }
+  };
+
   const logout = async () => {
     if (!auth) return;
     try {
@@ -117,6 +165,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       userData,
       loading,
       signInWithGoogle,
+      signUpWithEmail,
+      signInWithEmail,
       logout,
       refreshUserData: () => user ? fetchUserData(user) : Promise.resolve()
     }}>

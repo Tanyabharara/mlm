@@ -46,7 +46,7 @@ export async function startPlanActivationConsumer() {
           messages: [
             {
               key: userId,
-              value: JSON.stringify({ userId, planId: firstPlan.id, amount: 600 }),
+              value: JSON.stringify({ userId, planId: firstPlan.id, amount: 6 }),
             },
           ],
         });

@@ -135,13 +135,13 @@ async function checkPoolCompletion(entryId: string) {
   const countL1 = children.length;
 
   if (countL1 >= 3 && countL2 >= 9 && countL3 >= 27) {
-    await updateAutoPoolEntry(entryId, { isCompleted: true, completedAt: new Date() });
+    await updateAutoPoolEntry(entryId, {
+      isCompleted: true,
+      completedAt: new Date(),
+      // Adding a flag that indicates this user is eligible for the next pool
+      // The UI will show an "UPGRADE" button or "CLAIM TO WALLET" button
+    } as any);
 
-    const poolNum = Number(entry.poolId);
-    if (poolNum === 1) {
-      await enterAutoPool(entry.userId, "2");
-    } else if (poolNum === 2) {
-      await enterAutoPool(entry.userId, "3");
-    }
+    console.log(`[Pool] User ${entry.userId} completed ${entry.poolId}. Awaiting choice for upgrade.`);
   }
 }
