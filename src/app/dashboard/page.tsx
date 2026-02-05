@@ -162,25 +162,81 @@ export default function DashboardPage() {
                 </p>
             </div>
 
-            {/* 3. Main Bento Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Card 1: Wallet Balance */}
-                <div className="bg-white dark:bg-slate-900 p-10 rounded-[48px] border border-gray-100 dark:border-white/5 shadow-premium flex flex-col justify-between space-y-12">
-                    <div className="flex justify-between items-start">
-                        <div className="w-14 h-14 rounded-2xl bg-[#6C63FF]/10 flex items-center justify-center text-[#6C63FF]">
-                            <Wallet size={28} />
+            {/* 3. Main Bento Grid & Wallets */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Level Wallet */}
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-premium space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div className="w-12 h-12 rounded-2xl bg-[#6C63FF]/10 flex items-center justify-center text-[#6C63FF]">
+                            <Users size={24} />
                         </div>
-                        <button className="px-6 py-2.5 bg-[#6C63FF]/10 hover:bg-[#6C63FF]/20 text-[#6C63FF] rounded-full text-[10px] font-black uppercase tracking-widest transition-all">
-                            Withdraw Funds
-                        </button>
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Layer 1-10</span>
                     </div>
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Withdrawable Balance</p>
-                        <h3 className="text-5xl font-black tracking-tighter text-slate-900 dark:text-white">
-                            ${userData?.walletBalance || "0.00"}
-                        </h3>
+                    <div className="space-y-0.5">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Level Wallet</p>
+                        <h3 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white">${Number(earningsData?.directIncome || 0).toFixed(2)}</h3>
                     </div>
                 </div>
+
+                {/* Target Wallet */}
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-premium space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                            <Trophy size={24} />
+                        </div>
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Achievement</span>
+                    </div>
+                    <div className="space-y-0.5">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Target Wallet</p>
+                        <h3 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white">${Number(earningsData?.milestoneIncome || 0).toFixed(2)}</h3>
+                    </div>
+                </div>
+
+                {/* Pool Wallet */}
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-premium space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                            <Sparkles size={24} />
+                        </div>
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Auto Growth</span>
+                    </div>
+                    <div className="space-y-0.5">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pool Wallet</p>
+                        <h3 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white">${Number(earningsData?.poolIncome || 0).toFixed(2)}</h3>
+                    </div>
+                </div>
+            </div>
+
+            {/* Total Balance & Tools Bar */}
+            <div className="bg-[#6C63FF] p-8 md:p-10 rounded-[48px] shadow-2xl shadow-[#6C63FF]/20 flex flex-col md:flex-row items-center justify-between gap-8 text-white relative overflow-hidden group">
+                <div className="relative z-10 flex flex-col md:flex-row items-center gap-8 text-center md:text-left">
+                    <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
+                        <Wallet size={32} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">Total Withdrawable Balance</p>
+                        <h3 className="text-5xl font-black tracking-tighter font-outfit mt-1">${Number(userData?.walletBalance || 0).toFixed(2)}</h3>
+                    </div>
+                </div>
+
+                <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                    <button className="w-full sm:w-auto px-10 py-5 bg-white text-[#6C63FF] rounded-2xl text-[12px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl">
+                        Withdraw Now
+                    </button>
+                    <button
+                        onClick={handleCopyInvite}
+                        className="w-full sm:w-auto px-10 py-5 bg-[#5B52E5] text-white rounded-2xl text-[12px] font-black uppercase tracking-widest transition-all hover:bg-[#4A41D4]"
+                    >
+                        Copy Invite Link
+                    </button>
+                </div>
+
+                {/* Decorative Elements */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/5 rounded-full blur-xl translate-y-1/2 -translate-x-1/2" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
                 {/* Card 2: OTT Access */}
                 <div className="bg-white dark:bg-slate-900 p-10 rounded-[48px] border border-gray-100 dark:border-white/5 shadow-premium flex flex-col justify-between space-y-6">
@@ -239,7 +295,7 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Card 3: Milestone Tracker - Replaces Incentive Targets */}
+                {/* Card 3: Target Tracker - Replaces Incentive Targets */}
                 <div className="md:col-span-2 bg-slate-50 dark:bg-white/[0.02] rounded-[48px] p-2 border border-slate-100 dark:border-white/5 shadow-inner">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                         {earningsData?.milestones?.map((m: any, idx: number) => {
@@ -250,7 +306,7 @@ export default function DashboardPage() {
                                 <div key={idx} className="bg-white dark:bg-slate-900 rounded-[40px] p-8 space-y-6 border border-slate-100 dark:border-white/5 shadow-sm relative overflow-hidden group">
                                     <div className="flex items-start justify-between">
                                         <div className="space-y-1">
-                                            <h4 className="text-lg font-black font-outfit uppercase tracking-tighter text-slate-900 dark:text-white">Milestone {idx + 1}</h4>
+                                            <h4 className="text-lg font-black font-outfit uppercase tracking-tighter text-slate-900 dark:text-white">Target {idx + 1}</h4>
                                             <p className="text-2xl font-black text-[#6C63FF] tracking-tighter">${m.reward.toFixed(2)} Reward</p>
                                         </div>
                                         <div className={`p-2 rounded-xl ${m.isClaimed ? "bg-emerald-500/10 text-emerald-500" : "bg-blue-500/10 text-blue-500"}`}>
@@ -306,6 +362,96 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
+                {/* 5. Auto Pool Progress - Dummies View */}
+                <div className="bg-white dark:bg-slate-900 rounded-[48px] border border-gray-100 dark:border-white/5 shadow-premium overflow-hidden p-10 space-y-10">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h3 className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white uppercase font-outfit">Auto Pool Strategy</h3>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Visual matrix for {earningsData?.allPools?.find(p => p.status === 'ACTIVE' || p.isCurrent)?.name || "Current Pool"}</p>
+                        </div>
+                        <div className="px-4 py-2 bg-amber-500/10 rounded-2xl border border-amber-500/20 text-amber-500 text-[10px] font-black uppercase tracking-widest">
+                            Global Matrix Progress
+                        </div>
+                    </div>
+
+                    <div className="space-y-12">
+                        {(() => {
+                            const activePool = earningsData?.allPools?.find(p => p.status === 'ACTIVE' || p.isCurrent) || earningsData?.allPools?.[0];
+                            return (
+                                <>
+                                    {/* Level 1 - 3 Dummies */}
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center px-2">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-[#6C63FF]">Level 1 (Direct Trio)</span>
+                                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-tighter lowercase">{activePool?.level1Count || 0} / 3 slots filled</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-3">
+                                            {[...Array(3)].map((_, i) => {
+                                                const isFilled = i < (activePool?.level1Count || 0);
+                                                return (
+                                                    <div key={i} className={`w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-500 ${isFilled ? "bg-[#6C63FF]/10 border-[#6C63FF]/40 text-[#6C63FF] shadow-[0_0_15px_rgba(108,99,255,0.2)]" : "bg-slate-50 dark:bg-white/[0.02] border-slate-100 dark:border-white/5 text-slate-200 dark:text-slate-800"}`}>
+                                                        <Users size={isFilled ? 24 : 20} className={isFilled ? "opacity-100" : "opacity-30"} />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Level 2 - 9 Dummies */}
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center px-2">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Level 2 (The Nine)</span>
+                                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-tighter lowercase">{activePool?.level2Count || 0} / 9 slots filled</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2.5">
+                                            {[...Array(9)].map((_, i) => {
+                                                const isFilled = i < (activePool?.level2Count || 0);
+                                                return (
+                                                    <div key={i} className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all duration-500 ${isFilled ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-500" : "bg-slate-50 dark:bg-white/[0.02] border-slate-100 dark:border-white/5 text-slate-200 dark:text-slate-800"}`}>
+                                                        <Users size={isFilled ? 18 : 14} className={isFilled ? "opacity-100" : "opacity-30"} />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Level 3 - 27 Dummies */}
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center px-2">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Level 3 (Completion)</span>
+                                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-tighter lowercase">{activePool?.level3Count || 0} / 27 slots filled</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {[...Array(27)].map((_, i) => {
+                                                const isFilled = i < (activePool?.level3Count || 0);
+                                                return (
+                                                    <div key={i} className={`w-8 h-8 rounded-lg flex items-center justify-center border-2 transition-all duration-500 ${isFilled ? "bg-amber-500/10 border-amber-500/40 text-amber-500 shadow-sm" : "bg-slate-50 dark:bg-white/[0.02] border-slate-100 dark:border-white/5 text-slate-200 dark:text-slate-800"}`}>
+                                                        <Users size={isFilled ? 12 : 10} className={isFilled ? "opacity-100" : "opacity-30"} />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </>
+                            );
+                        })()}
+
+                        <div className="p-6 bg-slate-50 dark:bg-white/[0.02] rounded-[32px] border border-slate-100 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 animate-pulse">
+                                    <Sparkles size={18} />
+                                </div>
+                                <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight">
+                                    This pool fills automatically from worldwide activations. You do not need to refer these users yourself.
+                                </p>
+                            </div>
+                            <div className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest bg-white dark:bg-white/5 px-4 py-2 rounded-xl border border-slate-100 dark:border-white/10 shadow-sm lowercase">
+                                Global FIFO Queue active ✓
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Card 4: Auto Pool Rules */}
                 <div className="bg-white dark:bg-slate-900 p-10 rounded-[48px] border border-gray-100 dark:border-white/5 shadow-premium flex flex-col justify-between space-y-8">
                     <div className="flex items-center justify-between">
@@ -352,7 +498,7 @@ export default function DashboardPage() {
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Multi-tier referral network earnings (10 Levels)</p>
                     </div>
                     <div className="px-4 py-2 bg-[#6C63FF]/10 rounded-2xl border border-[#6C63FF]/20 text-[#6C63FF] text-[10px] font-black uppercase tracking-widest">
-                        Total Level Earnings: ${earningsData?.directIncome || "0.00"}
+                        Total Level Earnings: ${Number(earningsData?.directIncome || 0).toFixed(2)}
                     </div>
                 </div>
 
@@ -360,10 +506,16 @@ export default function DashboardPage() {
                     {earningsData?.levelEarnings?.map((amount, idx) => {
                         const level = idx + 1;
                         const percentages: Record<number, string> = {
-                            1: "10%",
-                            2: "5%",
-                            3: "2.5%",
-                            4: "0.5%", 5: "0.5%", 6: "0.5%", 7: "0.5%", 8: "0.5%", 9: "0.5%", 10: "0.5%"
+                            1: `${earningsData?.levelPercentages?.L1 || 10}%`,
+                            2: `${earningsData?.levelPercentages?.L2 || 5}%`,
+                            3: `${earningsData?.levelPercentages?.L3 || 2.5}%`,
+                            4: `${earningsData?.levelPercentages?.L4_10 || 0.5}%`,
+                            5: `${earningsData?.levelPercentages?.L4_10 || 0.5}%`,
+                            6: `${earningsData?.levelPercentages?.L4_10 || 0.5}%`,
+                            7: `${earningsData?.levelPercentages?.L4_10 || 0.5}%`,
+                            8: `${earningsData?.levelPercentages?.L4_10 || 0.5}%`,
+                            9: `${earningsData?.levelPercentages?.L4_10 || 0.5}%`,
+                            10: `${earningsData?.levelPercentages?.L4_10 || 0.5}%`
                         };
                         return (
                             <div key={idx} className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-3xl border border-slate-100 dark:border-white/5 space-y-3 hover:border-[#6C63FF]/30 transition-all group">
@@ -385,8 +537,10 @@ export default function DashboardPage() {
             <div className="bg-white dark:bg-slate-900 rounded-[48px] border border-gray-100 dark:border-white/5 shadow-premium overflow-hidden">
                 <div className="p-10 border-b border-gray-50 dark:border-white/5 flex items-center justify-between">
                     <div>
-                        <h3 className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white">Direct Incentive Plan</h3>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Real-time referral activation tracking</p>
+                        <h3 className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white uppercase font-outfit">Target Plan</h3>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                            Complete your target within 30 days of joining. Credits after 60 days of retention.
+                        </p>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded-full">

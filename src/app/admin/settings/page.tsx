@@ -28,7 +28,7 @@ export default function AdminSettings() {
         planPrice: '600',
         L1: 10,
         L2: 5,
-        L3: 1,
+        L3: 2.5,
         L4_10: 0.5,
         poolEntry: 100,
         poolReward: 500,
@@ -63,7 +63,7 @@ export default function AdminSettings() {
             });
             const data = await res.json();
             if (data.config && Object.keys(data.config).length > 0) {
-                setConfig({ ...config, ...data.config });
+                setConfig(prev => ({ ...prev, ...data.config }));
             }
         } catch (error) {
             console.error("Failed to fetch config");
@@ -108,7 +108,7 @@ export default function AdminSettings() {
         <div className="max-w-5xl mx-auto space-y-8 pb-20 px-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-4xl md:text-5xl font-black tracking-tighter mb-2">Admin Control</h1>
+                    <h1 className="text-4xl md:text-5xl font-black tracking-tighter mb-2 font-outfit uppercase">Admin Control</h1>
                     <p className="text-gray-500 font-medium">Configure global treasury and economy logic 👑</p>
                 </div>
                 <div className="flex items-center gap-3 px-4 py-2 bg-[#f0e6ff] rounded-2xl border border-[#6C63FF]/20">
@@ -180,7 +180,7 @@ export default function AdminSettings() {
                         <div className="w-12 h-12 rounded-2xl bg-[#6C63FF]/10 flex items-center justify-center">
                             <Wallet className="w-6 h-6 text-[#6C63FF]" />
                         </div>
-                        <h3 className="text-2xl font-black tracking-tight">Treasury Management</h3>
+                        <h3 className="text-2xl font-black tracking-tight uppercase">Treasury Management</h3>
                     </div>
 
                     <div className="space-y-4">
@@ -199,13 +199,33 @@ export default function AdminSettings() {
                     </div>
                 </div>
 
+                {/* Level Income Settings */}
+                <div className="bg-white dark:bg-[#1e1e2d] p-8 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm space-y-8">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-[#6C63FF]/10 flex items-center justify-center">
+                            <Percent className="w-6 h-6 text-[#6C63FF]" />
+                        </div>
+                        <h3 className="text-2xl font-black tracking-tight uppercase font-outfit">Level Income (%)</h3>
+                    </div>
+
+                    <div className="space-y-4">
+                        <ConfigInput label="Level 1 (%)" value={config.L1} onChange={(v) => setConfig({ ...config, L1: v })} />
+                        <ConfigInput label="Level 2 (%)" value={config.L2} onChange={(v) => setConfig({ ...config, L2: v })} />
+                        <ConfigInput label="Level 3 (%)" value={config.L3} onChange={(v) => setConfig({ ...config, L3: v })} />
+                        <ConfigInput label="Levels 4 to 10 (%)" value={config.L4_10} onChange={(v) => setConfig({ ...config, L4_10: v })} />
+                        <p className="text-[9px] text-gray-400 italic px-2">
+                            * These percentages are calculated based on the net distribution amount after deducting the Auto Pool entry portion.
+                        </p>
+                    </div>
+                </div>
+
                 {/* Plan Pricing */}
                 <div className="bg-white dark:bg-[#1e1e2d] p-8 rounded-[40px] border border-gray-100 dark:border-gray-800 shadow-sm space-y-8">
                     <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-2xl bg-[#4CAF50]/10 flex items-center justify-center">
                             <DollarSign className="w-6 h-6 text-[#4CAF50]" />
                         </div>
-                        <h3 className="text-2xl font-black tracking-tight">Plan 1 Economy</h3>
+                        <h3 className="text-2xl font-black tracking-tight uppercase font-outfit">Economy Logic</h3>
                     </div>
 
                     <div className="space-y-6">
@@ -220,9 +240,9 @@ export default function AdminSettings() {
                             onChange={(v) => setConfig({ ...config, poolEntry: v })}
                         />
                         <div className="p-5 bg-gray-50 dark:bg-gray-800 rounded-3xl space-y-2">
-                            <div className="flex justify-between text-[10px] font-black uppercase opacity-40">
+                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-40">
                                 <span>Ref. Distribution Capacity</span>
-                                <span>{parseFloat(config.planPrice) - parseFloat(config.poolEntry.toString())} USDT</span>
+                                <span>${(parseFloat(config.planPrice) - parseFloat(config.poolEntry.toString())).toFixed(2)} USDT</span>
                             </div>
                         </div>
                     </div>

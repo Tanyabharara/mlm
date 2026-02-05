@@ -35,6 +35,12 @@ export interface EarningsData {
     milestoneIncome: string;
     milestones: MilestoneProgress[];
     levelEarnings: string[];
+    levelPercentages: {
+        L1: number;
+        L2: number;
+        L3: number;
+        L4_10: number;
+    };
     allPools: AutoPoolDetail[];
     autoPool: {
         name: string;

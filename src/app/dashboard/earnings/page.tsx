@@ -120,7 +120,7 @@ export default function EarningsPage() {
                         <span className="text-[10px] font-bold">i</span>
                     </div>
                 </div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest -mt-4">Reach milestones to unlock additional rewards</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest -mt-4">Reach targets to unlock additional rewards</p>
                 <div className="flex items-center gap-2 p-4 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100/50 dark:border-blue-900/20 rounded-2xl max-w-2xl">
                     <span className="text-lg">ℹ️</span>
                     <p className="text-[11px] font-medium text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -146,7 +146,7 @@ export default function EarningsPage() {
                                 )}
                                 <div className="flex justify-between items-start">
                                     <div className="space-y-1">
-                                        <p className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest">Milestone {idx + 1}</p>
+                                        <p className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest">Target {idx + 1}</p>
                                         <h4 className="text-2xl font-black text-slate-900 dark:text-white">${Number(m.reward).toFixed(2)} <span className="text-xs font-bold text-slate-400">Reward</span></h4>
                                     </div>
                                     <div className="px-3 py-1 bg-blue-50 dark:bg-blue-900/20 text-[#6C63FF] border border-blue-100 dark:border-blue-800/50 rounded-full text-[8px] font-black uppercase tracking-widest">

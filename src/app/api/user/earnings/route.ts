@@ -86,9 +86,7 @@ export async function GET() {
       .reduce((acc: number, t: any) => acc + Number(t.amount), 0);
 
     const MILESTONE_SLABS = [
-      { target: 10, reward: 0.2 },
-      { target: 20, reward: 0.3 },
-      { target: 50, reward: 0.4 },
+      { target: 10, reward: 20 },
     ];
 
     const now = new Date();
@@ -163,8 +161,10 @@ export async function GET() {
       });
     }
 
-    const { getWithdrawalRequestsByUser } = await import("@/lib/firebase-db");
+    const { getWithdrawalRequestsByUser, getAppConfig } = await import("@/lib/firebase-db");
     const withdrawalRequests = await getWithdrawalRequestsByUser(dbUser.id);
+    const platformConfig = await getAppConfig("PLATFORM_CONFIG");
+    const pConfig = platformConfig ? JSON.parse(platformConfig.value) : {};
 
     const totalPayouts = withdrawalRequests
       .filter((w: any) => w.status === "APPROVED")
@@ -182,6 +182,12 @@ export async function GET() {
       milestoneIncome: milestoneIncome.toFixed(2),
       milestones: milestoneProgress,
       levelEarnings: levelEarnings.map((v) => v.toFixed(2)),
+      levelPercentages: {
+        L1: pConfig.L1 || 10,
+        L2: pConfig.L2 || 5,
+        L3: pConfig.L3 || 2.5,
+        L4_10: pConfig.L4_10 || 0.5
+      },
       allPools: allPoolsData,
       autoPool: {
         name: currentEntry?.poolId ? allPoolConfigs.find((p: any) => String(p.id) === String(currentEntry.poolId))?.name ?? "Pool 1" : "Pool 1",

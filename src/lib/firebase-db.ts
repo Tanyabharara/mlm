@@ -769,9 +769,12 @@ export async function getMilestonesByUser(userId: string): Promise<any[]> {
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
-export async function createMilestone(data: { userId: string; slab: number; amount: number }): Promise<any> {
+export async function createMilestone(data: { userId: string; slab: number; amount: number;[key: string]: any }): Promise<any> {
   const now = new Date();
-  const docRef = await db.collection("milestones").add({ ...data, createdAt: now });
+  const docRef = await db.collection("milestones").add({
+    ...data,
+    createdAt: now,
+  });
   return { id: docRef.id, ...data, createdAt: now };
 }
 

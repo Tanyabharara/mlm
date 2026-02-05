@@ -141,6 +141,10 @@ export default function WalletPage() {
                             <h3 className="text-3xl font-black text-slate-900 dark:text-white">${earnings?.directIncome || "0.00"}</h3>
                         </div>
                         <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Target Wallet</p>
+                            <h3 className="text-3xl font-black text-slate-900 dark:text-white">${earnings?.milestoneIncome || "0.00"}</h3>
+                        </div>
+                        <div>
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Pool Income</p>
                             <h3 className="text-3xl font-black text-slate-900 dark:text-white">${earnings?.poolIncome || "0.00"}</h3>
                         </div>

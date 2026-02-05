@@ -35,20 +35,23 @@ async function distributeNetworkRewards(userId: string, amount: number) {
   const user: any = await getUserById(userId);
   if (!user || !user.referredById) return;
 
-  const incomeConfig = await getAppConfig("LEVEL_INCOME_CONFIG");
+  // Fetch Percentages from Admin Config
+  const platformConfig = await getAppConfig("PLATFORM_CONFIG");
+  const pConfig = platformConfig ? JSON.parse(platformConfig.value) : {};
+
   const defaultPercentages: Record<number, number> = {
-    1: 0.1,    // 10%
-    2: 0.05,   // 5%
-    3: 0.025,  // 2.5%
-    4: 0.005,  // 0.5%
-    5: 0.005,  // 0.5%
-    6: 0.005,  // 0.5%
-    7: 0.005,  // 0.5%
-    8: 0.005,  // 0.5%
-    9: 0.005,  // 0.5%
-    10: 0.005, // 0.5%
+    1: (Number(pConfig.L1) / 100) || 0.1,    // Default 10%
+    2: (Number(pConfig.L2) / 100) || 0.05,   // Default 5%
+    3: (Number(pConfig.L3) / 100) || 0.025,  // Default 2.5%
+    4: (Number(pConfig.L4_10) / 100) || 0.005,  // Default 0.5%
+    5: (Number(pConfig.L4_10) / 100) || 0.005,
+    6: (Number(pConfig.L4_10) / 100) || 0.005,
+    7: (Number(pConfig.L4_10) / 100) || 0.005,
+    8: (Number(pConfig.L4_10) / 100) || 0.005,
+    9: (Number(pConfig.L4_10) / 100) || 0.005,
+    10: (Number(pConfig.L4_10) / 100) || 0.005,
   };
-  const config: Record<number, number> = incomeConfig ? JSON.parse(incomeConfig.value) : defaultPercentages;
+  const config = defaultPercentages;
 
   let currentUplineId: string | null = user.referredById;
   let level = 1;

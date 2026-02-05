@@ -117,7 +117,7 @@ export default function ActivatePage() {
                             <BenefitItem
                                 icon={<Zap size={20} className="text-[#6C63FF]" />}
                                 title="Target Incentives"
-                                desc="Unlock high-commission milestones based on your referral performance."
+                                desc="Unlock high-commission targets based on your referral performance."
                             />
                             <BenefitItem
                                 icon={<Activity size={20} className="text-[#6C63FF]" />}
