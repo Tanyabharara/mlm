@@ -95,16 +95,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // Store referral code in localStorage before popup
-    if (referralCode) {
-      localStorage.setItem("referralCode", referralCode);
-    }
-
+    // Set a temporary loading state or handled by the UI
     try {
+      // 1. Store referral code in localStorage before popup/redirect
+      // Priority: 1. Passed arg, 2. URL param (if we can get it), 3. Existing localStorage
+      const finalCode = referralCode || (typeof window !== 'undefined' ? localStorage.getItem("referralCode") : null);
+
+      if (finalCode) {
+        localStorage.setItem("referralCode", finalCode);
+      }
+
+      // 2. Trigger Google Sign-in
+      // Using signInWithPopup for desktop, but Firebase handles redirect internally if needed
       await signInWithPopup(auth, googleProvider);
+
+      // router.push("/dashboard") is handled by onAuthStateChanged essentially, 
+      // but we keep it here for immediate feedback
       router.push("/dashboard");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error signing in", error);
+      // Only alert if it's not a user-cancelled error
+      if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+        alert(error.message || "Sign in failed. Please try again.");
+      }
     }
   };
 

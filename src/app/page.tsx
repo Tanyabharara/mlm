@@ -14,7 +14,7 @@ import {
     LockKeyhole,
     X
 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
 import { Suspense } from "react";
@@ -42,6 +42,15 @@ function LoginContent() {
             setReferralCode(savedRef);
         }
     }, [searchParams]);
+
+    // Redirect if already logged in
+    const { user: authUser } = useAuth();
+    const router = useRouter();
+    useEffect(() => {
+        if (authUser) {
+            router.push("/dashboard");
+        }
+    }, [authUser, router]);
 
     useEffect(() => {
         const verifyCode = async () => {
@@ -292,20 +301,33 @@ function LoginContent() {
                         </div>
 
                         <button
-                            onClick={() => isVerified && signInWithGoogle(referralCode)}
-                            disabled={!isVerified}
-                            className={`w-full py-4 border-2 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${isVerified
-                                ? "border-[#F1F5F9] hover:bg-[#F8FAFC] text-[#0F172A]"
-                                : "border-slate-100 text-slate-300 cursor-not-allowed"
+                            onClick={async () => {
+                                if (!isVerified && !referralCode) {
+                                    setStatus({ type: 'error', message: 'Enter a Referral ID to join, or use the Login link below if you have an account.' });
+                                    return;
+                                }
+                                setStatus({ type: 'loading', message: 'Opening Google Sign-in...' });
+                                try {
+                                    await signInWithGoogle(referralCode);
+                                } catch (e) {
+                                    setStatus({ type: 'error', message: 'Failed to open sign-in popup' });
+                                }
+                            }}
+                            className={`w-full py-4 border-2 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${referralCode.length >= 6
+                                    ? "border-[#6C63FF]/30 bg-[#6C63FF]/5 text-[#6C63FF] hover:bg-[#6C63FF]/10"
+                                    : "border-[#F1F5F9] hover:bg-[#F8FAFC] text-[#0F172A]"
                                 }`}
                         >
-                            <img
-                                src="https://www.google.com/favicon.ico"
-                                alt="Google"
-                                width={16}
-                                height={16}
-                                className={isVerified ? "" : "opacity-20"}
-                            />
+                            {status?.type === 'loading' && status.message.includes('Google') ? (
+                                <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                                <img
+                                    src="https://www.google.com/favicon.ico"
+                                    alt="Google"
+                                    width={16}
+                                    height={16}
+                                />
+                            )}
                             Sign In with Google
                         </button>
                     </form>

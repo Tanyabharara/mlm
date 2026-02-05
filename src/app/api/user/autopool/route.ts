@@ -11,6 +11,8 @@ import {
   updateWalletBalance,
   createTransaction,
   getAutoPool,
+  getFirstAdminUser,
+  updatePlatformPoolBalance,
 } from "@/lib/firebase-db";
 import { enterAutoPool } from "@/lib/new-income-engine";
 
@@ -94,6 +96,7 @@ export async function GET(request: Request) {
         entryFee: String(entryFee),
         status,
         upgradeChoice: entry?.upgradeChoice || null,
+        heldIncome: entry?.heldIncome || 0,
         stats: { l1, l2, l3 },
         levelIncome,
         tree,
@@ -146,6 +149,7 @@ export async function POST(request: Request) {
 
     const nextPoolId = String(Number(entry.poolId) + 1);
     const nextPool = await getAutoPool(nextPoolId);
+    const currentPool = await getAutoPool(entry.poolId);
 
     if (action === "UPGRADE") {
       if (!nextPool) {
@@ -153,33 +157,124 @@ export async function POST(request: Request) {
       }
 
       const entryFee = Number(nextPool.entryFee);
-      if (user.walletBalance < entryFee) {
-        return NextResponse.json({ error: "Insufficient balance for upgrade" }, { status: 400 });
+      const heldAmount = Number(entry.heldIncome || 0);
+
+      if (heldAmount < entryFee) {
+        // If held amount is not enough, check wallet as fallback? 
+        // User said: "money collected from pool 1 will be used in pool 2 instantly"
+        // This implies it SHOULD be enough. Pool 1 reward (₹1020) > Pool 2 fee (₹1000).
+        return NextResponse.json({ error: "Insufficient pool earnings for upgrade" }, { status: 400 });
       }
 
-      // Deduct fee
-      await updateWalletBalance(user.id, entryFee, "increment"); // Wait, decrement
-      // I'll use a negative increment
-      await updateWalletBalance(user.id, -entryFee, "increment");
+      // 1. Calculate Surplus and Entry Fee
+      const surplus = heldAmount - entryFee;
 
+      // 2. Surplus goes to ADMIN wallet
+      if (surplus > 0) {
+        const adminUser = await getFirstAdminUser();
+        if (adminUser) {
+          await updateWalletBalance(adminUser.id, surplus, "increment");
+          await createTransaction({
+            userId: adminUser.id,
+            amount: surplus,
+            type: "CREDIT",
+            category: "POOL_SURPLUS",
+            description: `Surplus from ${user.name || user.id} completing ${currentPool?.name || "Pool"}`,
+          });
+        }
+      }
+
+      // 3. Entry fee ($10) is debited from Admin Pool and effectively paid for user
+      await updatePlatformPoolBalance(entryFee, "decrement");
+
+      // Log CREDIT for user (as their reward hitting the wallet)
+      await updateWalletBalance(user.id, entryFee, "increment");
+      await createTransaction({
+        userId: user.id,
+        amount: entryFee,
+        type: "CREDIT",
+        category: "POOL_INCOME",
+        description: `Collected reward from ${currentPool?.name || "Pool"}`,
+      });
+
+      // Log DEBIT for user (paying for the next pool)
+      await updateWalletBalance(user.id, -entryFee, "increment");
       await createTransaction({
         userId: user.id,
         amount: entryFee,
         type: "DEBIT",
         category: "POOL_UPGRADE",
-        description: `Upgrade to ${nextPool.name}`,
+        description: `Entry fee for ${nextPool.name}`,
       });
 
       await enterAutoPool(user.id, nextPoolId);
       await updateAutoPoolEntry(entryId, { upgradeChoice: "UPGRADED" } as any);
 
-      return NextResponse.json({ success: true, message: `Successfully upgraded to ${nextPool.name}` });
+      return NextResponse.json({ success: true, message: `Successfully upgraded to ${nextPool.name}. Surplus of $${surplus.toFixed(2)} sent to Admin.` });
     } else if (action === "CLAIM") {
-      // For CLAIM, we just mark it as claimed. The reward was already paid in chunks.
-      // If the user expects a lump sum, we would have had to hold it. 
-      // But based on "Direct income monetization", it's instant.
+      const heldAmount = Number(entry.heldIncome || 0);
+      if (heldAmount <= 0) {
+        return NextResponse.json({ error: "No earnings to claim" }, { status: 400 });
+      }
+
+      // Calculate the "round" reward amount (10x the entry fee)
+      // Pool 1 ($1 fee) -> $10 reward, $0.20 surplus
+      // Pool 2 ($10 fee) -> $100 reward, $2 surplus
+      const entryFee = Number(currentPool?.entryFee || 1);
+      const roundReward = entryFee * 10;
+      const surplus = heldAmount - roundReward;
+
+      // 1. Surplus ($0.20) goes to ADMIN as company fee
+      if (surplus > 0) {
+        const adminUser = await getFirstAdminUser();
+        if (adminUser) {
+          await updateWalletBalance(adminUser.id, surplus, "increment");
+          await createTransaction({
+            userId: adminUser.id,
+            amount: surplus,
+            type: "CREDIT",
+            category: "POOL_COMPANY_FEE",
+            description: `Processing fee from ${user.name || user.id}'s ${currentPool?.name || "Pool"} claim`,
+          });
+        }
+      }
+
+      // 2. Debit Admin Platform Pool (for the user's $10 portion)
+      await updatePlatformPoolBalance(roundReward, "decrement");
+
+      // 3. Credit User Wallet (The rounded reward)
+      await updateWalletBalance(user.id, roundReward, "increment");
+      await createTransaction({
+        userId: user.id,
+        amount: roundReward,
+        type: "CREDIT",
+        category: "POOL_INCOME",
+        description: `Final net reward from ${currentPool?.name || "Pool"} (after processing fee)`,
+      });
+
+      // 4. Create a withdrawal request for admin approval
+      // Lock the $10 in a withdrawal request
+      await updateWalletBalance(user.id, -roundReward, "increment");
+      await createTransaction({
+        userId: user.id,
+        amount: roundReward,
+        type: "DEBIT",
+        category: "WITHDRAWAL_REQUEST",
+        description: `Withdrawal request for ${currentPool?.name || "Pool"} settled reward`,
+      });
+
+      const { createWithdrawalRequest } = await import("@/lib/firebase-db");
+      await createWithdrawalRequest({
+        userId: user.id,
+        amount: roundReward,
+      });
+
       await updateAutoPoolEntry(entryId, { upgradeChoice: "CLAIMED" } as any);
-      return NextResponse.json({ success: true, message: "Reward claimed to wallet" });
+
+      return NextResponse.json({
+        success: true,
+        message: `Processed $${roundReward.toFixed(2)} to your wallet and sent withdrawal request. Company fee of $${surplus.toFixed(2)} collected.`
+      });
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });

@@ -18,10 +18,10 @@ export async function distributeIncome(purchaseId: string) {
   if (!user || !plan) return;
 
   const planPrice = Number(plan.price);
-  const networkWorkingAmount = planPrice * 0.9;
+  const networkWorkingAmount = planPrice;
 
-  // Level income is disabled as per new model where Milestones are the Direct Income source
-  // await distributeNetworkRewards(user.id, networkWorkingAmount);
+  // Level income distribution (10 levels)
+  await distributeNetworkRewards(user.id, networkWorkingAmount);
 
   await enterAutoPool(user.id, "1");
 
@@ -37,8 +37,16 @@ async function distributeNetworkRewards(userId: string, amount: number) {
 
   const incomeConfig = await getAppConfig("LEVEL_INCOME_CONFIG");
   const defaultPercentages: Record<number, number> = {
-    1: 0.1, 2: 0.05, 3: 0.01,
-    4: 0.005, 5: 0.005, 6: 0.005, 7: 0.005, 8: 0.005, 9: 0.005, 10: 0.005,
+    1: 0.1,    // 10%
+    2: 0.05,   // 5%
+    3: 0.025,  // 2.5%
+    4: 0.005,  // 0.5%
+    5: 0.005,  // 0.5%
+    6: 0.005,  // 0.5%
+    7: 0.005,  // 0.5%
+    8: 0.005,  // 0.5%
+    9: 0.005,  // 0.5%
+    10: 0.005, // 0.5%
   };
   const config: Record<number, number> = incomeConfig ? JSON.parse(incomeConfig.value) : defaultPercentages;
 

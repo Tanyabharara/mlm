@@ -91,7 +91,7 @@ export default function DashboardPage() {
 
     const handleCopyInvite = () => {
         if (!userData?.referralCode) return;
-        const link = `${window.location.origin}/register?ref=${userData.referralCode}`;
+        const link = `${window.location.origin}/?ref=${userData.referralCode}`;
         navigator.clipboard.writeText(link);
         alert("Invite link copied to clipboard! 🚀");
     };
@@ -341,6 +341,43 @@ export default function DashboardPage() {
                             ))}
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* 4. Level Income Breakdown */}
+            <div className="bg-white dark:bg-slate-900 rounded-[48px] border border-gray-100 dark:border-white/5 shadow-premium overflow-hidden p-10 space-y-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h3 className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white uppercase">Level Income Breakdown</h3>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Multi-tier referral network earnings (10 Levels)</p>
+                    </div>
+                    <div className="px-4 py-2 bg-[#6C63FF]/10 rounded-2xl border border-[#6C63FF]/20 text-[#6C63FF] text-[10px] font-black uppercase tracking-widest">
+                        Total Level Earnings: ${earningsData?.directIncome || "0.00"}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    {earningsData?.levelEarnings?.map((amount, idx) => {
+                        const level = idx + 1;
+                        const percentages: Record<number, string> = {
+                            1: "10%",
+                            2: "5%",
+                            3: "2.5%",
+                            4: "0.5%", 5: "0.5%", 6: "0.5%", 7: "0.5%", 8: "0.5%", 9: "0.5%", 10: "0.5%"
+                        };
+                        return (
+                            <div key={idx} className="bg-slate-50 dark:bg-white/[0.02] p-6 rounded-3xl border border-slate-100 dark:border-white/5 space-y-3 hover:border-[#6C63FF]/30 transition-all group">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Level {level}</span>
+                                    <span className="text-[8px] font-black text-[#6C63FF] bg-[#6C63FF]/10 px-2 py-0.5 rounded-full">{percentages[level]}</span>
+                                </div>
+                                <div className="space-y-0.5">
+                                    <p className="text-lg font-black text-slate-900 dark:text-white tracking-tighter group-hover:text-[#6C63FF] transition-colors">${amount}</p>
+                                    <p className="text-[8px] font-medium text-slate-400 uppercase tracking-widest">Earned</p>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 

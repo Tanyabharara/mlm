@@ -156,23 +156,28 @@ export default function AutoPoolPage() {
                                     {isCompleted && !hasDecision && (
                                         <div className="pt-4 space-y-3">
                                             <p className="text-[11px] font-bold text-slate-500 leading-relaxed">
-                                                Congratulations! Pool complete. You have earned a total of ${((pool.levelIncome.l1 + pool.levelIncome.l2 + pool.levelIncome.l3)).toFixed(2)}.
-                                                Would you like to pay ${pool.id === '1' ? '10' : '100'} to upgrade to the next tier, or claim your earnings?
+                                                Congratulations! {pool.name} complete. You have earned a total of ${Number(pool.heldIncome || 0).toFixed(2)}.
+                                                {Number(pool.id) < 3
+                                                    ? `Would you like to pay $${pool.id === '1' ? '10' : '100'} from these earnings to upgrade to the next tier, or withdraw the money?`
+                                                    : "You have reached the final tier! You can now withdraw your total earnings to your bank account."
+                                                }
                                             </p>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <button
-                                                    onClick={() => actionMutation.mutate({ entryId: pool.tree.id, action: "UPGRADE" })}
-                                                    disabled={actionMutation.isPending}
-                                                    className="py-3 bg-[#6C63FF] hover:bg-[#5B52E5] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50"
-                                                >
-                                                    {actionMutation.isPending ? "Processing..." : "Upgrade"}
-                                                </button>
+                                            <div className={`grid ${Number(pool.id) < 3 ? "grid-cols-2" : "grid-cols-1"} gap-3`}>
+                                                {Number(pool.id) < 3 && (
+                                                    <button
+                                                        onClick={() => actionMutation.mutate({ entryId: pool.tree.id, action: "UPGRADE" })}
+                                                        disabled={actionMutation.isPending}
+                                                        className="py-3 bg-[#6C63FF] hover:bg-[#5B52E5] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50"
+                                                    >
+                                                        {actionMutation.isPending ? "Processing..." : "Next Pool"}
+                                                    </button>
+                                                )}
                                                 <button
                                                     onClick={() => actionMutation.mutate({ entryId: pool.tree.id, action: "CLAIM" })}
                                                     disabled={actionMutation.isPending}
                                                     className="py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50"
                                                 >
-                                                    Claim
+                                                    Withdraw
                                                 </button>
                                             </div>
                                         </div>

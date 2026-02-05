@@ -647,9 +647,18 @@ export async function createAutoPoolEntry(data: {
     ...data,
     isCompleted: false,
     completedAt: null,
+    heldIncome: 0,
     createdAt: now,
   });
-  return { id: docRef.id, ...data, isCompleted: false, completedAt: null, createdAt: now };
+  return { id: docRef.id, ...data, isCompleted: false, completedAt: null, heldIncome: 0, createdAt: now };
+}
+
+export async function updateAutoPoolEntryHeldIncome(id: string, amount: number): Promise<void> {
+  const entryRef = db.collection("autoPoolEntries").doc(id);
+  await entryRef.update({
+    heldIncome: FieldValue.increment(amount),
+    updatedAt: new Date(),
+  });
 }
 
 export async function getAutoPoolEntry(id: string): Promise<any | null> {

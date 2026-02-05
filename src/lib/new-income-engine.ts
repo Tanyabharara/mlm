@@ -23,8 +23,16 @@ export async function distributeDirectIncome(userId: string, purchaseAmount: num
 
   const incomeConfig = await getAppConfig("LEVEL_INCOME_CONFIG");
   const defaultPercentages: Record<number, number> = {
-    1: 0.1, 2: 0.05, 3: 0.01,
-    4: 0.005, 5: 0.005, 6: 0.005, 7: 0.005, 8: 0.005, 9: 0.005, 10: 0.005,
+    1: 0.1,    // 10%
+    2: 0.05,   // 5%
+    3: 0.025,  // 2.5%
+    4: 0.005,  // 0.5%
+    5: 0.005,
+    6: 0.005,
+    7: 0.005,
+    8: 0.005,
+    9: 0.005,
+    10: 0.005,
   };
   const levelRewards: Record<number, number> = incomeConfig ? JSON.parse(incomeConfig.value) : defaultPercentages;
 
@@ -105,13 +113,8 @@ async function distributePoolIncome(entryId: string) {
     const commission = entryFee * (levelPercentages[distLevel] || 0);
 
     if (commission > 0) {
-      const percentage = (levelPercentages[distLevel] || 0) * 100;
-      await logSystemPayout(
-        parent.userId,
-        commission,
-        "POOL_INCOME",
-        `Auto Pool ${pool?.id || "?"} L${distLevel} income (${percentage}%) from entry ${freshEntry.id}`
-      );
+      const { updateAutoPoolEntryHeldIncome } = await import("./firebase-db");
+      await updateAutoPoolEntryHeldIncome(parent.id, commission);
       await checkPoolCompletion(parent.id);
     }
 
